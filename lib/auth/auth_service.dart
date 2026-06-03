@@ -45,6 +45,24 @@ class AuthService {
     }
   }
 
+  /// Set premium with expiry date (for promo codes)
+  Future<void> setPremiumWithExpiry(int days) async {
+    final user = _auth.currentUser;
+    final expiryDate = DateTime.now().add(Duration(days: days));
+    
+    if (user != null) {
+      await _firestore.collection('users').doc(user.uid).set({
+        'premium_status': true,
+        'premium_expiry': expiryDate.toIso8601String(),
+      }, SetOptions(merge: true));
+    } else {
+      // Save for guest
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('guest_premium_status', true);
+      await prefs.setString('guest_premium_expiry', expiryDate.toIso8601String());
+    }
+  }
+
   /// Check if the current user has used their promotional call
   Future<bool> hasUsedPromoCall() async {
     final user = _auth.currentUser;

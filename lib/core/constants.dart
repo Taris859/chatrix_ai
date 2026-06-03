@@ -10,7 +10,7 @@ class AppConstants {
   /// 
   /// IMPORTANT: Before launching tomorrow, replace this with your deployed production
   /// backend server URL (e.g. 'https://chatrix-soul-engine.herokuapp.com').
-  static const String customBackendUrl = ''; // Put your production backend URL here if deployed
+  static const String customBackendUrl = 'https://chatrix-ai-1.onrender.com'; // Put your production backend URL here if deployed
 
   static String get backendBaseUrl {
     if (customBackendUrl.isNotEmpty) {

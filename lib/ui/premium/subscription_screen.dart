@@ -78,6 +78,62 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     _loadPaymentConfig();
   }
 
+  void _applyPromoCode() async {
+    final codeController = TextEditingController();
+    final code = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.black,
+        title: Text('Enter Promo Code', style: GoogleFonts.inter(color: Colors.white)),
+        content: TextField(
+          controller: codeController,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            hintText: 'Enter code',
+            hintStyle: TextStyle(color: Colors.white54),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: GoogleFonts.inter(color: Colors.white70)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, codeController.text.trim()),
+            child: Text('Apply', style: GoogleFonts.inter(color: ChatrixTheme.champagneGold)),
+          ),
+        ],
+      ),
+    );
+
+    if (code != null && code == 'TCHATRIX90I') {
+      try {
+        await AuthService().setPremiumWithExpiry(20);
+        if (mounted) {
+          _showTriumphOverlay();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to activate premium: $e'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+      }
+    } else if (code != null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Invalid promo code'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
   void _initRazorpay() {
     _razorpay = Razorpay();
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
@@ -524,7 +580,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           _buildBenefitItem("Exclusive atmospheric scenes"),
           _buildBenefitItem("Relationship journals & milestones"),
           _buildBenefitItem("Faster AI responses"),
-          _buildBenefitItem("Voice features (coming soon)"),
+          _buildBenefitItem("Voice features"),
           const SizedBox(height: 32),
           SizedBox(
             width: double.infinity,
@@ -556,6 +612,18 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       "Continue with ₹${_plans[_selectedPlan].amountINR}",
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 0.5),
                     ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextButton(
+            onPressed: _isLoading ? null : _applyPromoCode,
+            child: Text(
+              "Have a promo code?",
+              style: GoogleFonts.inter(
+                color: ChatrixTheme.champagneGold,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],

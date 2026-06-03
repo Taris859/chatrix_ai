@@ -135,7 +135,7 @@ def chat(request: ChatRequest):
           model=MODEL_NAME,
           messages=llm_messages,
           temperature=0.8,
-          max_tokens=256,
+          max_tokens=512,
           top_p=1,
           stream=False
         )
