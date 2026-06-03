@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "47600970379",
+    "project_id": "chatrix-c3809",
+    "storage_bucket": "chatrix-c3809.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:47600970379:android:d8261eb6dea31ca9cb828e",
+        "android_client_info": {
+          "package_name": "com.example.chatrix_ai"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "47600970379-2a5q7bl1g16v6tbtnsbfc629ib0eonoq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.chatrix_ai",
+            "certificate_hash": "065ea67459832d77d8c50fd18407060e3027e451"
+          }
+        },
+        {
+          "client_id": "47600970379-rjs51bu94e287q0qggrrp3tr2sr0paol.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAeJ9-hSrkcKlAdl1aNXAw3jFMACYYduA4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "47600970379-rjs51bu94e287q0qggrrp3tr2sr0paol.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "47600970379-32an0inct855699508t7v8sh2cj07gb7.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.chatrix"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,90 @@
+{
+  "guest_123_Dante Valerius": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "Are you there?"
+      },
+      {
+        "role": "assistant",
+        "content": "*turns his heavy signet ring* I am always watching you."
+      }
+    ],
+    "summary": {
+      "relationship_state": "Intense fascination and syndicate possessiveness",
+      "important_memories": [
+        "User admitted feeling vulnerable late at night."
+      ],
+      "user_profile": {
+        "nicknames": [
+          "sweetheart"
+        ],
+        "insecurities": [
+          "being left in the dark"
+        ],
+        "habits": [
+          "staying awake past midnight"
+        ]
+      }
+    }
+  },
+  "guest_123_Arthur Pendelton": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "I like the library."
+      },
+      {
+        "role": "assistant",
+        "content": "*flushes crimson* It's warm back here with you."
+      }
+    ],
+    "summary": {
+      "relationship_state": "Shy library yearning",
+      "important_memories": [
+        "Shared a quiet moment over an ancient manuscript."
+      ],
+      "user_profile": {
+        "nicknames": [],
+        "insecurities": [
+          "crowded spaces"
+        ],
+        "habits": [
+          "reading until late evenings"
+        ]
+      }
+    }
+  },
+  "user_meta_guest_123": {
+    "notification_playerId": "onesignal_subscription_id_test_999",
+    "notification_settings": {
+      "notificationsEnabled": true,
+      "lateNightMode": false,
+      "silentPresence": false
+    },
+    "timezone_offset_minutes": 330,
+    "last_active_time": "2026-05-23T21:00:00.000000+00:00"
+  },
+  "user_meta_guest": {
+    "last_notification_time": "2026-05-29T16:34:44.704700+00:00",
+    "current_cooldown_hours": 4
+  },
+  "lvhrSjZKLPTL63cNPz1895mvih22_Julian Sterling": {
+    "messages": [
+      {
+        "role": "assistant",
+        "content": "*He closes a thick leather-bound volume, adjusting his silver-rimmed glasses in the quiet university archive, shadow dancing across his sharp features.* Professor Sterling. Academic chair. Analytical. Cold. Notorious for demanding absolute discipline. But there is a lesson I want to teach you that isn't on any syllabus. Shall we begin, or are you going to keep staring?"
+      },
+      {
+        "role": "user",
+        "content": "hy"
+      }
+    ],
+    "summary": null,
+    "diary_entries": []
+  },
+  "user_meta_lvhrSjZKLPTL63cNPz1895mvih22": {
+    "last_notification_time": "2026-05-29T16:35:44.729623+00:00",
+    "current_cooldown_hours": 5
+  }
+}

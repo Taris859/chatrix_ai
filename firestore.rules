@@ -1,0 +1,120 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─────────────────────────────────────────────
+    // HELPER FUNCTIONS
+    // ─────────────────────────────────────────────
+
+    // Returns true only if the caller is signed in
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Returns true if the caller owns the document via a 'userId' field
+    function isOwner() {
+      return isSignedIn() && request.auth.uid == resource.data.userId;
+    }
+
+    // Returns true if the incoming write contains a userId matching the caller
+    function isWritingAsOwner() {
+      return isSignedIn() && request.auth.uid == request.resource.data.userId;
+    }
+
+    // ─────────────────────────────────────────────
+    // USERS  (private — own profile only)
+    // ─────────────────────────────────────────────
+    match /users/{userId} {
+      // Strictly path-scoped: only the exact user can touch their profile
+      allow read, update: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn()
+                    && request.auth.uid == userId;
+      allow delete: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // ─────────────────────────────────────────────
+    // CHATS  (fully private — no cross-user access)
+    //
+    // Chat documents are keyed as  {userId}_{companionId}
+    // so we can validate ownership purely from the document path.
+    // ─────────────────────────────────────────────
+    match /chats/{chatId} {
+      // Only the user whose UID is embedded in the chatId can access it
+      allow read, write: if isSignedIn()
+                         && chatId.matches('^' + request.auth.uid + '_.*');
+
+      // Messages sub-collection inherits the same path-based check
+      match /messages/{messageId} {
+        allow read, write: if isSignedIn()
+                           && chatId.matches('^' + request.auth.uid + '_.*');
+      }
+    }
+
+    // ─────────────────────────────────────────────
+    // AI COMPANIONS  (public read, creator update/delete)
+    // ─────────────────────────────────────────────
+    match /ai_companions/{companionId} {
+      // Any authenticated user can browse the companion catalog
+      allow read: if isSignedIn();
+
+      // Anyone signed in can create, but they must set themselves as creator
+      allow create: if isSignedIn()
+                    && request.resource.data.creatorId == request.auth.uid;
+
+      // Only the creator can update or delete
+      allow update, delete: if isSignedIn() 
+                            && resource.data.creatorId == request.auth.uid;
+    }
+
+    // Alias used by the profile screen (profile_screen.dart line 165)
+    match /companions/{companionId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+                    && request.resource.data.creatorId == request.auth.uid;
+      // Only the creator can update or delete
+      allow update, delete: if isSignedIn() 
+                            && resource.data.creatorId == request.auth.uid;
+    }
+
+    // ─────────────────────────────────────────────
+    // SCENES  (public read catalog, never client-written)
+    // ─────────────────────────────────────────────
+    match /scenes/{sceneId} {
+      allow read: if isSignedIn();
+      allow write: if false; // admin SDK / Firebase Console only
+    }
+
+    // ─────────────────────────────────────────────
+    // MEMORY JOURNALS  (private — own journals only)
+    // ─────────────────────────────────────────────
+    match /memory_journals/{journalId} {
+      allow read, delete: if isOwner();
+      allow create: if isWritingAsOwner();
+      // Ensure the user owns the existing journal AND doesn't transfer ownership to someone else
+      allow update: if isOwner() && isWritingAsOwner();
+    }
+
+    // ─────────────────────────────────────────────
+    // SUBSCRIPTIONS  (read own only, never client-written)
+    // ─────────────────────────────────────────────
+    match /subscriptions/{subId} {
+      allow read: if isOwner();
+      allow write: if false; // server-side (Cloud Functions / backend) only
+    }
+
+    // ─────────────────────────────────────────────
+    // ANALYTICS / LOGS  (backend only)
+    // ─────────────────────────────────────────────
+    match /analytics/{docId} {
+      allow read, write: if false;
+    }
+
+    // ─────────────────────────────────────────────
+    // FALLBACK DENY  (catches everything not matched above)
+    // ─────────────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
