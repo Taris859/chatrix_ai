@@ -36,8 +36,8 @@ client = OpenAI(
   api_key = NVIDIA_API_KEY
 )
 
-RAZORPAY_KEY = os.getenv("RAZORPAY_KEY", "rzp_live_SuetHsCvdTs9sR")
-RAZORPAY_SECRET = os.getenv("RAZORPAY_SECRET", "gNr61P3lX9NqYQaUZOk1akOq")
+RAZORPAY_KEY = os.getenv("RAZORPAY_KEY", "rzp_live_SxDgLp1gs3KyJ3")
+RAZORPAY_SECRET = os.getenv("RAZORPAY_SECRET", "bVAma3djzX3qaXIVLExDGrd2")
 rzp_client = razorpay.Client(auth=(RAZORPAY_KEY, RAZORPAY_SECRET))
 
 # Using Llama 3 70B for its high emotional intelligence and roleplay capability
@@ -168,6 +168,8 @@ def chat(request: ChatRequest):
         print(f"Error: {e}")
         raise HTTPException(status_code=500, detail="Failed to connect to the Soul Engine.")
 
+ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "sk_b6af5e1e2354b2042bfdf59d2a43d0cd8e0a66557fa1774a")
+
 @app.get("/config")
 def get_config():
     """
@@ -176,6 +178,7 @@ def get_config():
     """
     return {
         "razorpay_key": RAZORPAY_KEY,
+        "elevenlabs_key": ELEVENLABS_API_KEY,
         "premium_price_inr": 249
     }
 

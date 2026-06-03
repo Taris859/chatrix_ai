@@ -37,7 +37,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   late Razorpay _razorpay;
   
   // Real Razorpay Key loaded dynamically from backend or fallback to production key
-  String _razorpayKey = "rzp_live_SuetHsCvdTs9sR"; 
+  String _razorpayKey = "rzp_live_SxDgLp1gs3KyJ3"; 
 
   // Pre-configured elegant subscription plans
   final List<SubscriptionPlan> _plans = [
@@ -146,8 +146,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       final config = await RazorpayService().fetchConfig();
       if (config != null) {
         if (config['razorpay_key'] != null && config['razorpay_key'].toString().isNotEmpty) {
-          _razorpayKey = config['razorpay_key'];
-          print("Razorpay active gateway key updated dynamically: $_razorpayKey");
+          final servedKey = config['razorpay_key'].toString();
+          if (servedKey == "rzp_live_SuetHsCvdTs9sR") {
+            print("Served Razorpay key is deprecated. Using local fallback key: $_razorpayKey");
+          } else {
+            _razorpayKey = servedKey;
+            print("Razorpay active gateway key updated dynamically: $_razorpayKey");
+          }
         }
         if (config['premium_price_inr'] != null) {
           final backendMonthlyPrice = int.tryParse(config['premium_price_inr'].toString());

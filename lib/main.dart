@@ -9,6 +9,9 @@ import 'firebase_options.dart';
 import 'services/notification_service.dart';
 import 'services/autonomous_notification_service.dart';
 
+import 'services/razorpay_service.dart';
+import 'services/voice_service.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
@@ -25,11 +28,28 @@ void main() async {
   // Safe initialization of Autonomous Local Notifications
   await AutonomousNotificationService().initialize();
 
+  // Async preload of backend configuration (ElevenLabs key, Razorpay key)
+  _preloadConfig();
+
   runApp(
     const ProviderScope(
       child: ChatrixApp(),
     ),
   );
+}
+
+Future<void> _preloadConfig() async {
+  try {
+    final config = await RazorpayService().fetchConfig();
+    if (config != null) {
+      final elevenlabsKey = config['elevenlabs_key'];
+      if (elevenlabsKey != null && elevenlabsKey is String && elevenlabsKey.isNotEmpty) {
+        VoiceService().updateApiKey(elevenlabsKey);
+      }
+    }
+  } catch (e) {
+    print("Error preloading config: $e");
+  }
 }
 
 class ChatrixApp extends ConsumerWidget {

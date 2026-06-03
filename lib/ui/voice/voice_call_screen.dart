@@ -11,8 +11,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme.dart';
 import '../../models/companion.dart';
 import '../../services/voice_service.dart';
+import '../../services/razorpay_service.dart';
 import '../../memory/memory_service.dart';
 import '../../auth/auth_service.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 class VoiceCallScreen extends StatefulWidget {
   final Companion companion;
@@ -44,6 +46,10 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> with SingleTickerProv
   
   final List<Map<String, String>> _callHistory = [];
   final TextEditingController _whisperController = TextEditingController();
+  
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  bool _speechEnabled = false;
+  String _lastTranscribedText = "";
   
   late final List<String> _whisperHotkeys;
 
@@ -173,6 +179,8 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> with SingleTickerProv
       print("SharedPreferences initialization failed in VoiceCallScreen: $e");
     }
 
+    _preloadConfig();
+    _initSpeech();
     _initializeCall();
   }
 
@@ -218,7 +226,7 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> with SingleTickerProv
                widget.companion.archetype.toLowerCase().contains("vampire")) {
       initialGreeting = "Mmm... you actually called. Speak up, darling. Let me hear what you want.";
     } else if (widget.companion.gender == CompanionGender.female) {
-      initialGreeting = "Ah... I was hoping I'd hear from you. Tell me what's on your mind. I'm all yours.";
+      initialGreeting = " I was hoping I'd hear from you. Tell me what's on your mind. I'm all yours.";
     }
 
     setState(() {
@@ -614,38 +622,131 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> with SingleTickerProv
     }
   }
 
-  void _simulateMicSpeaking() {
-    if (_isConnecting || _isUserSpeaking) return;
+  Future<void> _preloadConfig() async {
+    try {
+      final config = await RazorpayService().fetchConfig();
+      if (config != null) {
+        final elevenlabsKey = config['elevenlabs_key'];
+        if (elevenlabsKey != null && elevenlabsKey is String && elevenlabsKey.isNotEmpty) {
+          VoiceService().updateApiKey(elevenlabsKey);
+        }
+      }
+    } catch (e) {
+      print("Error preloading config in VoiceCallScreen: $e");
+    }
+  }
+
+  Future<void> _initSpeech() async {
+    try {
+      bool available = await _speech.initialize(
+        onStatus: (status) {
+          print('Speech recognition status: $status');
+          if (status == 'done' || status == 'notListening') {
+            if (mounted && _isUserSpeaking) {
+              setState(() {
+                _isUserSpeaking = false;
+              });
+            }
+          }
+        },
+        onError: (errorNotification) {
+          print('Speech recognition error: $errorNotification');
+          if (mounted) {
+            setState(() {
+              _isUserSpeaking = false;
+            });
+          }
+        },
+      );
+      if (mounted) {
+        setState(() {
+          _speechEnabled = available;
+        });
+      }
+    } catch (e) {
+      print('Speech recognition initialization error: $e');
+    }
+  }
+
+  Future<void> _startListening() async {
+    if (_isConnecting || _isCompanionSpeaking) return;
     
     _handleUserInterruption();
     
-    HapticFeedback.heavyImpact();
-    setState(() {
-      _isUserSpeaking = true;
-      _callTextStatus = "Listening...";
-    });
-
-    // Simulate active mic input visualizer for 3 seconds
-    Timer(const Duration(seconds: 3), () {
-      if (!mounted) return;
+    await HapticFeedback.heavyImpact();
+    
+    if (!_speechEnabled) {
+      await _initSpeech();
+    }
+    
+    if (_speechEnabled) {
+      setState(() {
+        _isUserSpeaking = true;
+        _callTextStatus = "Listening...";
+        _lastTranscribedText = "";
+      });
       
+      try {
+        await _speech.listen(
+          onResult: (result) {
+            if (mounted) {
+              setState(() {
+                _lastTranscribedText = result.recognizedWords;
+                if (result.recognizedWords.isNotEmpty) {
+                  _spokenText = result.recognizedWords;
+                }
+              });
+            }
+          },
+          listenMode: stt.ListenMode.dictation,
+          pauseFor: const Duration(seconds: 4),
+        );
+      } catch (e) {
+        print("Speech listen error: $e");
+      }
+    } else {
+      setState(() {
+        _spokenText = "Voice listening unavailable. Try manual whisper.";
+      });
+    }
+  }
+
+  Future<void> _stopListening({required bool send}) async {
+    if (!_isUserSpeaking) return;
+    
+    await HapticFeedback.mediumImpact();
+    
+    try {
+      await _speech.stop();
+    } catch (e) {
+      print("Speech stop error: $e");
+    }
+    
+    if (mounted) {
       setState(() {
         _isUserSpeaking = false;
+        _callTextStatus = "Active Call";
       });
-
-      // Pick a random sensual whisper they "said"
-      final list = [
-        "I want you closer...",
-        "Are you thinking about me?",
-        "Whisper something to make me shiver...",
-        "Do you belong to me?",
-        "Sing for me...",
-        "I'm all yours tonight."
-      ];
-      final spoken = list[Random().nextInt(list.length)];
       
-      _fetchVoiceReply(spoken);
-    });
+      if (send) {
+        final textToSend = _lastTranscribedText.trim();
+        if (textToSend.isNotEmpty) {
+          _fetchVoiceReply(textToSend);
+        } else {
+          setState(() {
+            _spokenText = "";
+          });
+        }
+      }
+    }
+  }
+
+  void _toggleListening() {
+    if (_isUserSpeaking) {
+      _stopListening(send: true);
+    } else {
+      _startListening();
+    }
   }
 
   void _toggleSpicyMode() {
@@ -1055,8 +1156,9 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> with SingleTickerProv
 
                       // Giant Pulse Hold-To-Speak Mic
                       GestureDetector(
-                        onLongPress: _simulateMicSpeaking,
-                        onTap: _simulateMicSpeaking, // Allow tap-to-simulate too
+                        onLongPressStart: (_) => _startListening(),
+                        onLongPressEnd: (_) => _stopListening(send: true),
+                        onTap: _toggleListening,
                         child: Container(
                           height: 72,
                           width: 72,

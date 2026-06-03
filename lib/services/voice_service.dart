@@ -12,10 +12,17 @@ class VoiceService {
   final FlutterTts _flutterTts = FlutterTts();
   
   // User's ElevenLabs configuration
-  final String _apiKey = "sk_b6af5e1e2354b2042bfdf59d2a43d0cd8e0a66557fa1774a";
+  String _apiKey = "sk_b6af5e1e2354b2042bfdf59d2a43d0cd8e0a66557fa1774a";
   final String _maleVoiceId = "jhBzyKbsdeM6F66SZCaK";
   final String _femaleVoiceId = "EXAVITQu4vr4xnSDxMaL"; // Default custom woman voice (Sarah)
   
+  void updateApiKey(String key) {
+    if (key.trim().isNotEmpty) {
+      _apiKey = key.trim();
+      print("VoiceService ElevenLabs API key updated dynamically.");
+    }
+  }
+
   bool isPlaying = false;
 
   VoiceService._internal() {

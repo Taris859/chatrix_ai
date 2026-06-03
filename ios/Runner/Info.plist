@@ -66,5 +66,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Speech recognition is required to transcribe user comments during live calls.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Microphone access is required to capture user audio during live voice calls.</string>
 </dict>
 </plist>
