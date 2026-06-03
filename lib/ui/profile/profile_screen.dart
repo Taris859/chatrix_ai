@@ -205,7 +205,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         if (user != null) {
           final uid = user.uid;
           
-          final companionsQuery = await FirebaseFirestore.instance.collection('companions').where('creatorId', isEqualTo: uid).get();
+          final companionsQuery = await FirebaseFirestore.instance.collection('ai_companions').where('created_by', isEqualTo: uid).get();
           for (var doc in companionsQuery.docs) {
              await doc.reference.delete();
           }
