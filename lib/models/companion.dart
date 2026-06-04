@@ -15,9 +15,13 @@ class Companion {
   final List<String> tags;
   final String? creatorId;
   final String? voiceId;
+  final String? avatarName;
 
   /// Automatically resolves asset image path if one exists
   String? get imagePath {
+    if (avatarName != null && avatarName!.isNotEmpty) {
+      return 'assets/images/$avatarName.png';
+    }
     var parts = name.split(' ');
     var cleanName = parts.first;
     if (cleanName.toLowerCase() == 'dr.' || cleanName.toLowerCase() == 'professor') {
@@ -76,6 +80,7 @@ class Companion {
     this.tags = const [],
     this.creatorId,
     this.voiceId,
+    this.avatarName,
   });
 
   factory Companion.fromFirestore(Map<String, dynamic> data, String id, {Companion? fallback}) {
@@ -127,6 +132,7 @@ class Companion {
       tags: tags,
       creatorId: data['creatorId'] ?? data['created_by'] ?? data['creator_id'] ?? fallback?.creatorId,
       voiceId: data['voice_id'] ?? data['voiceId'] ?? fallback?.voiceId,
+      avatarName: data['avatar_name'] ?? data['avatarName'] ?? data['image_name'] ?? fallback?.avatarName,
     );
   }
 }

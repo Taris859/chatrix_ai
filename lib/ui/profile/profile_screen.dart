@@ -11,6 +11,7 @@ import '../../auth/auth_service.dart';
 import '../settings_screen.dart';
 import '../premium/subscription_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../memory/memory_service.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -416,7 +417,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               title: "Privacy Settings",
                               subtitle: "Manage data visibility and sharing",
                               color: ChatrixTheme.silverMist,
-                              onTap: () {},
+                              onTap: () => _showPrivacySettingsSheet(context),
                             ),
 
                             _buildActionCard(
@@ -424,19 +425,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               title: "Clear Memory",
                               subtitle: "Wipe all conversational context",
                               color: ChatrixTheme.errorRose,
-                              onTap: () {},
-                            ),
-
-                            _buildActionCard(
-                              icon: Icons.download_rounded,
-                              title: "Export My Data",
-                              subtitle: "Download your emotional matrix",
-                              color: ChatrixTheme.silverMist,
-                              onTap: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text("Data export requested. (Demo)")),
-                                );
-                              },
+                              onTap: () => _showClearMemoryDialog(context),
                             ),
 
                             const SizedBox(height: 32),
@@ -631,6 +620,258 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             Icon(Icons.chevron_right_rounded, color: Colors.white24, size: 22),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showClearMemoryDialog(BuildContext context) {
+    final userId = AuthService().currentUserId;
+    if (userId == null) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.black.withOpacity(0.95),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: BorderSide(color: ChatrixTheme.errorRose.withOpacity(0.3), width: 1.5),
+        ),
+        title: Text(
+          "CLEAR EMOTIONAL MEMORY?",
+          style: GoogleFonts.cinzel(
+            color: ChatrixTheme.errorRose,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.5,
+            fontSize: 18,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        content: Text(
+          "This will permanently erase all chat history and memory journals with all companions. This action is absolute and cannot be undone.",
+          style: GoogleFonts.inter(color: Colors.white70, fontSize: 13, height: 1.5),
+          textAlign: TextAlign.center,
+        ),
+        actionsAlignment: MainAxisAlignment.spaceEvenly,
+        actionsPadding: const EdgeInsets.only(bottom: 20, left: 16, right: 16),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              "CANCEL",
+              style: GoogleFonts.inter(color: Colors.white60, fontWeight: FontWeight.bold),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: ChatrixTheme.errorRose,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+            onPressed: () async {
+              Navigator.pop(context);
+              // Show loading overlay
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => const Center(
+                  child: CircularProgressIndicator(color: ChatrixTheme.errorRose),
+                ),
+              );
+              try {
+                await MemoryService().clearAllMemory(userId);
+                if (context.mounted) {
+                  Navigator.pop(context); // Pop loading
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text("All memories cleared.", style: GoogleFonts.inter(color: Colors.white)),
+                      backgroundColor: ChatrixTheme.errorRose,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  Navigator.pop(context); // Pop loading
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text("Error clearing memory: $e", style: GoogleFonts.inter(color: Colors.white)),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                }
+              }
+            },
+            child: Text(
+              "WIPE MEMORIES",
+              style: GoogleFonts.inter(fontWeight: FontWeight.bold, letterSpacing: 0.5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPrivacySettingsSheet(BuildContext context) async {
+    final userId = AuthService().currentUserId;
+    if (userId == null) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    bool allowAnalytics = prefs.getBool('privacy_allow_analytics') ?? true;
+    bool publicSearch = prefs.getBool('privacy_public_search') ?? true;
+    bool encryptedLogs = prefs.getBool('privacy_encrypted_logs') ?? false;
+
+    // Load from Firestore if exists
+    try {
+      final doc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+      if (doc.exists && doc.data()?.containsKey('privacy_settings') == true) {
+        final settings = doc.data()?['privacy_settings'] as Map<String, dynamic>;
+        allowAnalytics = settings['allow_analytics'] ?? allowAnalytics;
+        publicSearch = settings['public_search'] ?? publicSearch;
+        encryptedLogs = settings['encrypted_logs'] ?? encryptedLogs;
+      }
+    } catch (_) {}
+
+    if (!context.mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.95),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(32),
+                  topRight: Radius.circular(32),
+                ),
+                border: Border.all(color: Colors.white.withOpacity(0.08), width: 1.5),
+              ),
+              padding: EdgeInsets.fromLTRB(24, 20, 24, MediaQuery.of(context).viewInsets.bottom + 32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 48,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    "PRIVACY SETTINGS",
+                    style: GoogleFonts.cinzel(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2.0,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Manage your digital emotional security and visibility.",
+                    style: GoogleFonts.inter(color: Colors.white38, fontSize: 13),
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  _buildPrivacyToggle(
+                    title: "Emotional Analytics & Diagnostics",
+                    subtitle: "Allow anonymous logging to improve companion replies.",
+                    value: allowAnalytics,
+                    icon: Icons.analytics_outlined,
+                    onChanged: (val) async {
+                      setModalState(() => allowAnalytics = val);
+                      await prefs.setBool('privacy_allow_analytics', val);
+                      await FirebaseFirestore.instance.collection('users').doc(userId).set({
+                        'privacy_settings': {'allow_analytics': val}
+                      }, SetOptions(merge: true));
+                    },
+                  ),
+                  
+                  _buildPrivacyToggle(
+                    title: "Public Search Visibility",
+                    subtitle: "Allow custom created companions to be searchable by others.",
+                    value: publicSearch,
+                    icon: Icons.search_rounded,
+                    onChanged: (val) async {
+                      setModalState(() => publicSearch = val);
+                      await prefs.setBool('privacy_public_search', val);
+                      await FirebaseFirestore.instance.collection('users').doc(userId).set({
+                        'privacy_settings': {'public_search': val}
+                      }, SetOptions(merge: true));
+                    },
+                  ),
+                  
+                  _buildPrivacyToggle(
+                    title: "Encrypted Message Logs",
+                    subtitle: "Apply client-side hashing parameters to chat database.",
+                    value: encryptedLogs,
+                    icon: Icons.vpn_key_outlined,
+                    onChanged: (val) async {
+                      setModalState(() => encryptedLogs = val);
+                      await prefs.setBool('privacy_encrypted_logs', val);
+                      await FirebaseFirestore.instance.collection('users').doc(userId).set({
+                        'privacy_settings': {'encrypted_logs': val}
+                      }, SetOptions(merge: true));
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildPrivacyToggle({
+    required String title,
+    required String subtitle,
+    required bool value,
+    required IconData icon,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: ChatrixTheme.surface.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: ChatrixTheme.silverMist, size: 22),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.inter(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: GoogleFonts.inter(color: Colors.white38, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          Switch.adaptive(
+            value: value,
+            activeColor: ChatrixTheme.champagneGold,
+            onChanged: onChanged,
+          ),
+        ],
       ),
     );
   }

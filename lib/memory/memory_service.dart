@@ -190,4 +190,30 @@ class MemoryService {
     }
     return null;
   }
+
+  /// Wipe all local cache and Firestore chat history/memory for a user
+  Future<void> clearAllMemory(String userId) async {
+    try {
+      // 1. Clear SharedPreferences cache keys starting with chat_ or memory_
+      final prefs = await SharedPreferences.getInstance();
+      final keys = prefs.getKeys();
+      final keysToRemove = keys.where((k) => k.startsWith('chat_${userId}_') || k.startsWith('memory_${userId}_')).toList();
+      for (final key in keysToRemove) {
+        await prefs.remove(key);
+      }
+
+      // 2. Clear from Cloud Firestore
+      final chatsQuery = await _firestore.collection('chats')
+          .where(FieldPath.documentId, isGreaterThanOrEqualTo: '${userId}_')
+          .where(FieldPath.documentId, isLessThan: '${userId}_\uf8ff')
+          .get();
+
+      for (var doc in chatsQuery.docs) {
+        await doc.reference.delete();
+      }
+    } catch (e) {
+      print("Error clearing memory: $e");
+      rethrow;
+    }
+  }
 }

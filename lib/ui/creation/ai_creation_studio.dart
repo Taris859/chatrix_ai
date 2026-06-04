@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
@@ -45,6 +46,13 @@ class _AICreationStudioState extends State<AICreationStudio> {
 
   Color _selectedThemeColor = const Color(0xFF00FFCC); // Bioluminescence default
   String _themeColorHex = "#00FFCC";
+  String _selectedAvatar = "Aria";
+
+  final List<String> _avatars = [
+    'Aria', 'Dante', 'Evelyn', 'Julian', 'Lana', 'Leo', 'Ryker', 'Seraphina', 'Valentina',
+    'Alistair', 'Arthur', 'Bella', 'Damien', 'Dimitri', 'Ethan', 'Haru', 'Iris', 'Jade', 'Kaelen', 'Lucas',
+    'Kabir', 'Vihaan', 'Devansh', 'Rohan', 'Arjun', 'Samarth', 'Aditya', 'Ishaan', 'Reyansh', 'Aryan'
+  ];
 
   final List<Map<String, dynamic>> _archetypes = [
     {"name": "Custom Companion", "icon": Icons.psychology_outlined},
@@ -252,6 +260,7 @@ class _AICreationStudioState extends State<AICreationStudio> {
         'emotional_warmth': _emotionalWarmth,
         'danger_level': _dangerLevel,
         'conversation_energy': _conversationEnergy,
+        'avatar_name': _selectedAvatar,
       };
 
       // 1. Dynamic write to Cloud Firestore
@@ -321,8 +330,11 @@ class _AICreationStudioState extends State<AICreationStudio> {
                             if (v == null || v.trim().isEmpty) return "Anchor their name first.";
                             return null;
                           }),
-                          const SizedBox(height: 24),
-                          
+                          _buildSectionTitle("CHOOSE AVATAR PORTRAIT (DP)"),
+                          const SizedBox(height: 16),
+                          _buildAvatarSelector(),
+                          const SizedBox(height: 28),
+
                           _buildSectionTitle("CHOOSE ARCHETYPE PRESETS"),
                           const SizedBox(height: 12),
                           _buildArchetypeGrid(),
@@ -642,6 +654,69 @@ class _AICreationStudioState extends State<AICreationStudio> {
           ),
         );
       }).toList(),
+    );
+  }
+
+  Widget _buildAvatarSelector() {
+    return Container(
+      height: 120,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: _avatars.length,
+        itemBuilder: (context, index) {
+          final avatar = _avatars[index];
+          final isSelected = _selectedAvatar == avatar;
+          
+          return GestureDetector(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              setState(() {
+                _selectedAvatar = avatar;
+              });
+            },
+            child: Container(
+              margin: const EdgeInsets.only(right: 16),
+              child: Column(
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isSelected ? _selectedThemeColor : Colors.white10,
+                        width: isSelected ? 3 : 1.5,
+                      ),
+                      boxShadow: isSelected ? [
+                        BoxShadow(
+                          color: _selectedThemeColor.withOpacity(0.35),
+                          blurRadius: 10,
+                          spreadRadius: 1,
+                        )
+                      ] : [],
+                    ),
+                    child: CircleAvatar(
+                      radius: 32,
+                      backgroundImage: AssetImage('assets/images/$avatar.png'),
+                      backgroundColor: Colors.grey[900],
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    avatar,
+                    style: GoogleFonts.inter(
+                      color: isSelected ? Colors.white : Colors.white38,
+                      fontSize: 10,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }
