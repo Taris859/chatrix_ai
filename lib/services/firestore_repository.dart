@@ -15,6 +15,9 @@ final companionsProvider = FutureProvider<List<Companion>>((ref) async {
   List<Companion> list = [];
   final Set<String> seenIds = {};
 
+  // Build the fallback list first to use as a fallback base for Firestore / Local caching
+  final List<Companion> fallback = _buildFallbackCompanions();
+
   // Load locally created companions from SharedPreferences first
   try {
     final prefs = await SharedPreferences.getInstance();
@@ -25,7 +28,14 @@ final companionsProvider = FutureProvider<List<Companion>>((ref) async {
           final Map<String, dynamic> data = jsonDecode(raw);
           final id = data['id'] ?? UniqueKey().toString();
           if (!seenIds.contains(id)) {
-            list.add(Companion.fromFirestore(data, id));
+            Companion? baseCompanion;
+            for (final c in fallback) {
+              if (c.id == id) {
+                baseCompanion = c;
+                break;
+              }
+            }
+            list.add(Companion.fromFirestore(data, id, fallback: baseCompanion));
             seenIds.add(id);
           }
         } catch (e) {
@@ -58,7 +68,14 @@ final companionsProvider = FutureProvider<List<Companion>>((ref) async {
       
       if (!seenIds.contains(id)) {
         seenIds.add(id);
-        return Companion.fromFirestore(data, id);
+        Companion? baseCompanion;
+        for (final c in fallback) {
+          if (c.id == id) {
+            baseCompanion = c;
+            break;
+          }
+        }
+        return Companion.fromFirestore(data, id, fallback: baseCompanion);
       }
       return null;
     }).whereType<Companion>().toList();
@@ -71,9 +88,8 @@ final companionsProvider = FutureProvider<List<Companion>>((ref) async {
     print("Error fetching companions from Firestore: $e");
   }
 
-  // Fallback: Use the complete 28 companion list if Firestore is empty or fails
-  print("Using fallback companion list (28 companions)");
-  final List<Companion> fallback = _buildFallbackCompanions();
+  // Fallback: Use the complete companion list for any missing companions
+  print("Merging in any missing fallback companions");
 
   // Merge local companions with fallback, avoiding duplicates
   for (var companion in fallback) {

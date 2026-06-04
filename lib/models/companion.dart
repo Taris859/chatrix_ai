@@ -78,10 +78,12 @@ class Companion {
     this.voiceId,
   });
 
-  factory Companion.fromFirestore(Map<String, dynamic> data, String id) {
-    Color color = Colors.deepPurpleAccent;
-    if (data['theme_color'] != null) {
-      String hex = data['theme_color'].toString().replaceAll('#', '');
+  factory Companion.fromFirestore(Map<String, dynamic> data, String id, {Companion? fallback}) {
+    print("Companion.fromFirestore [id=$id] - RAW DATA: $data");
+    Color color = fallback?.themeColor ?? Colors.deepPurpleAccent;
+    final rawThemeColor = data['theme_color'] ?? data['ThemeColor'] ?? data['themeColor'];
+    if (rawThemeColor != null) {
+      String hex = rawThemeColor.toString().replaceAll('#', '');
       if (hex.length == 6) hex = 'FF$hex';
       try {
         color = Color(int.parse(hex, radix: 16));
@@ -90,14 +92,16 @@ class Companion {
       }
     }
 
-    CompanionGender gender = CompanionGender.male;
-    if (data['gender'] != null) {
-      switch (data['gender'].toString().toLowerCase()) {
+    CompanionGender gender = fallback?.gender ?? CompanionGender.male;
+    final rawGender = data['gender'] ?? data['Gender'];
+    if (rawGender != null) {
+      switch (rawGender.toString().toLowerCase()) {
         case 'female':
           gender = CompanionGender.female;
           break;
         case 'non_binary':
         case 'nonbinary':
+        case 'non-binary':
           gender = CompanionGender.nonBinary;
           break;
         default:
@@ -105,23 +109,24 @@ class Companion {
       }
     }
 
-    List<String> tags = [];
-    if (data['tags'] != null && data['tags'] is List) {
-      tags = List<String>.from(data['tags']);
+    List<String> tags = fallback?.tags ?? [];
+    final rawTags = data['tags'] ?? data['Tags'];
+    if (rawTags != null && rawTags is List) {
+      tags = List<String>.from(rawTags);
     }
 
     return Companion(
       id: id,
-      name: data['name'] ?? 'Unknown',
-      archetype: data['archetype'] ?? 'Companion',
-      personality: data['personality'] ?? '',
-      greeting: data['greeting'] ?? 'I was waiting for you.',
+      name: data['name'] ?? data['Name'] ?? data['displayName'] ?? data['full_name'] ?? data['character_name'] ?? fallback?.name ?? 'Unknown',
+      archetype: data['archetype'] ?? data['Archetype'] ?? data['role'] ?? fallback?.archetype ?? 'Companion',
+      personality: data['personality'] ?? data['Personality'] ?? fallback?.personality ?? '',
+      greeting: data['greeting'] ?? data['Greeting'] ?? fallback?.greeting ?? 'I was waiting for you.',
       themeColor: color,
-      isPremium: data['premium_only'] ?? false,
+      isPremium: data['premium_only'] ?? data['premiumOnly'] ?? data['isPremium'] ?? fallback?.isPremium ?? false,
       gender: gender,
       tags: tags,
-      creatorId: data['creatorId'],
-      voiceId: data['voice_id'] ?? data['voiceId'],
+      creatorId: data['creatorId'] ?? data['created_by'] ?? data['creator_id'] ?? fallback?.creatorId,
+      voiceId: data['voice_id'] ?? data['voiceId'] ?? fallback?.voiceId,
     );
   }
 }

@@ -56,6 +56,10 @@ class RazorpayService {
     required String paymentId,
     required String orderId,
     required String signature,
+    String? email,
+    String? planName,
+    double? amount,
+    String? expiry,
   }) async {
     try {
       final response = await http.post(
@@ -66,6 +70,10 @@ class RazorpayService {
           'payment_id': paymentId,
           'order_id': orderId,
           'signature': signature,
+          if (email != null) 'email': email,
+          if (planName != null) 'plan_name': planName,
+          if (amount != null) 'amount': amount,
+          if (expiry != null) 'expiry': expiry,
         }),
       );
       if (response.statusCode == 200) {

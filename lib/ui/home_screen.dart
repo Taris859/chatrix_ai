@@ -12,6 +12,7 @@ import 'chat_screen.dart';
 import '../services/firestore_repository.dart';
 import '../models/companion.dart';
 import '../auth/auth_service.dart';
+import '../auth/auth_provider.dart';
 import 'premium/subscription_screen.dart';
 import 'creation/ai_creation_studio.dart';
 import 'profile/profile_screen.dart';
@@ -358,6 +359,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // Logo Header Bar (Matches Mockup)
   // ═══════════════════════════════════════════
   Widget _buildTopLogoRow(BuildContext context) {
+    final isPremium = ref.watch(premiumStatusProvider).value ?? false;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 12, 18, 4),
       child: Row(
@@ -376,12 +379,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: const Color(0xFFE53935), width: 1.5),
+              border: Border.all(
+                color: isPremium ? ChatrixTheme.champagneGold : const Color(0xFFE53935),
+                width: 1.5,
+              ),
             ),
-            child: const Text(
-              "BASIC",
+            child: Text(
+              isPremium ? "PREMIUM" : "BASIC",
               style: TextStyle(
-                color: Color(0xFFE53935),
+                color: isPremium ? ChatrixTheme.champagneGold : const Color(0xFFE53935),
                 fontSize: 8,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 0.8,
@@ -663,7 +669,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        "Guest Developer",
+                        companion.creatorId == null ? "Official Companion" : "Custom Companion",
                         style: GoogleFonts.inter(
                           color: Colors.white70,
                           fontSize: 9,

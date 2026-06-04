@@ -13,3 +13,8 @@ final authStateProvider = StreamProvider<User?>((ref) {
 final authServiceProvider = Provider<AuthService>((ref) {
   return AuthService();
 });
+
+final premiumStatusProvider = FutureProvider<bool>((ref) async {
+  ref.watch(authStateProvider);
+  return ref.read(authServiceProvider).isPremium();
+});

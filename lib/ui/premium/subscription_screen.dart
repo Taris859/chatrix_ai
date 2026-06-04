@@ -3,9 +3,11 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme.dart';
 import '../../services/razorpay_service.dart';
 import '../../auth/auth_service.dart';
+import '../../auth/auth_provider.dart';
 
 class SubscriptionPlan {
   final String id;
@@ -23,14 +25,14 @@ class SubscriptionPlan {
   });
 }
 
-class SubscriptionScreen extends StatefulWidget {
+class SubscriptionScreen extends ConsumerStatefulWidget {
   const SubscriptionScreen({Key? key}) : super(key: key);
 
   @override
-  State<SubscriptionScreen> createState() => _SubscriptionScreenState();
+  ConsumerState<SubscriptionScreen> createState() => _SubscriptionScreenState();
 }
 
-class _SubscriptionScreenState extends State<SubscriptionScreen> {
+class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   bool _isLoading = true;
   String _loadingMessage = "Initializing Secure Gateways...";
   int _selectedPlan = 1; // Default to Monthly (1 Month)
@@ -109,6 +111,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     if (code != null && code == 'TCHATRIX90I') {
       try {
         await AuthService().setPremiumWithExpiry(20);
+        ref.invalidate(premiumStatusProvider);
         if (mounted) {
           _showTriumphOverlay();
         }
@@ -254,17 +257,38 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     });
 
     try {
+      final plan = _plans[_selectedPlan];
+      int days = 30;
+      if (plan.id.contains("1_week")) {
+        days = 7;
+      } else if (plan.id.contains("1_month")) {
+        days = 30;
+      } else if (plan.id.contains("2_months")) {
+        days = 60;
+      } else if (plan.id.contains("1_year")) {
+        days = 365;
+      }
+      
+      final expiryDate = DateTime.now().add(Duration(days: days));
+      final expiryStr = "${expiryDate.day}/${expiryDate.month}/${expiryDate.year}";
+      final currentUserEmail = AuthService().currentUser?.email ?? "wanderer@chatrix.ai";
+
       // 3. Verify Razorpay signature securely via backend before granting Premium
       final isVerified = await RazorpayService().verifyPayment(
         userId: currentUserId,
         paymentId: response.paymentId ?? '',
         orderId: response.orderId ?? '',
         signature: response.signature ?? '',
+        email: currentUserEmail,
+        planName: plan.name,
+        amount: plan.amountINR.toDouble(),
+        expiry: expiryStr,
       );
 
       if (isVerified) {
         // Upgrade Premium entitlement in Cloud Firestore
         await AuthService().setPremium(true);
+        ref.invalidate(premiumStatusProvider);
         if (mounted) {
           setState(() => _isLoading = false);
           _showTriumphOverlay();

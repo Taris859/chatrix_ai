@@ -1,7 +1,7 @@
 import os
 import json
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from openai import OpenAI
 from typing import Optional
@@ -13,6 +13,7 @@ from memory.memory_manager import add_message, get_session_data, get_chat_histor
 from services.prompt_injector import build_system_prompt
 from services.emotional_summarizer import summarize_emotions
 from services.notification_scheduler import start_scheduler_loop, NotificationScheduler
+from services.email_service import send_subscription_email
 
 from fastapi.middleware.cors import CORSMiddleware
 import httpx
@@ -208,9 +209,13 @@ class PaymentVerifyRequest(BaseModel):
     payment_id: str
     order_id: str
     signature: str
+    email: Optional[str] = None
+    plan_name: Optional[str] = None
+    amount: Optional[float] = None
+    expiry: Optional[str] = None
 
 @app.post("/verify_payment")
-def verify_payment(request: PaymentVerifyRequest):
+def verify_payment(request: PaymentVerifyRequest, background_tasks: BackgroundTasks):
     """
     Secure Payment Verification Layer.
     Performs backend checkout token verification before upgrading entitlement levels in Firestore.
@@ -224,6 +229,18 @@ def verify_payment(request: PaymentVerifyRequest):
             'razorpay_payment_id': request.payment_id,
             'razorpay_signature': request.signature
         })
+
+        if request.email:
+            background_tasks.add_task(
+                send_subscription_email,
+                to_email=request.email,
+                user_id=request.user_id,
+                payment_id=request.payment_id,
+                plan_name=request.plan_name or "Premium",
+                amount=request.amount or 249.0,
+                expiry=request.expiry or "30 days from now"
+            )
+
         return {
             "status": "success",
             "message": "Payment verified securely by Chatrix Validation Layer",
