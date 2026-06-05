@@ -1,11 +1,11 @@
 {
-    "name": "chatrix_ai",
-    "short_name": "chatrix_ai",
+    "name": "Chatrix",
+    "short_name": "Chatrix",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#050507",
+    "theme_color": "#050507",
+    "description": "Immersive AI Character Chat Platform",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
