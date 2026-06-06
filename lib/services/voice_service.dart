@@ -72,9 +72,23 @@ class VoiceService {
       isPlaying = true;
 
       // 2. Make request to ElevenLabs API
-      String activeVoiceId = (voiceId != null && voiceId.trim().isNotEmpty)
-          ? voiceId.trim()
-          : (isFemale ? _femaleVoiceId : _maleVoiceId);
+      String activeVoiceId;
+      if (voiceId != null && voiceId.trim().isNotEmpty) {
+        final cleanId = voiceId.trim();
+        // Standard ElevenLabs voice IDs are 20-character alphanumeric strings,
+        // but we allow 15-35 alphanumeric/underscore/hyphen characters to be safe.
+        final idPattern = RegExp(r'^[a-zA-Z0-9_-]{15,35}$');
+        if (idPattern.hasMatch(cleanId)) {
+          activeVoiceId = cleanId;
+          print("VoiceService: Using custom or verified voice ID: $activeVoiceId");
+        } else {
+          activeVoiceId = isFemale ? _femaleVoiceId : _maleVoiceId;
+          print("VoiceService: Provided voice ID '$cleanId' is structurally invalid. Falling back to: $activeVoiceId");
+        }
+      } else {
+        activeVoiceId = isFemale ? _femaleVoiceId : _maleVoiceId;
+        print("VoiceService: No voice ID provided. Falling back to: $activeVoiceId");
+      }
 
       // Determine voice parameters based on companion and style
       double stability = customStability ?? 0.5;

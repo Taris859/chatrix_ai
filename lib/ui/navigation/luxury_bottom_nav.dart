@@ -12,9 +12,10 @@ import '../../core/theme.dart';
 import '../../services/firestore_repository.dart';
 import '../../models/companion.dart';
 import '../creation/ai_creation_studio.dart';
-import '../../ui/emotional_space.dart';
+import '../../auth/auth_service.dart';
 import '../../ui/emotional_space_registry.dart';
 import '../../ui/emotional_space_screen.dart';
+import '../../memory/memory_service.dart';
 
 
 // Navigation state provider
@@ -35,6 +36,7 @@ class LuxuryBottomNav extends ConsumerWidget {
           HomeScreen(),
           ChatsScreen(),
           ExploreScreen(),
+          MyAIsScreen(),
         ],
       ),
       bottomNavigationBar: _buildLuxuryNavBar(context, currentIndex, ref),
@@ -58,7 +60,7 @@ class LuxuryBottomNav extends ConsumerWidget {
           ),
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
@@ -83,6 +85,14 @@ class LuxuryBottomNav extends ConsumerWidget {
                     activeIcon: Icons.explore_rounded,
                     label: 'Explore',
                     index: 2,
+                    currentIndex: currentIndex,
+                    ref: ref,
+                  ),
+                  _buildNavItem(
+                    icon: Icons.face_retouching_natural,
+                    activeIcon: Icons.face_rounded,
+                    label: 'My AI',
+                    index: 3,
                     currentIndex: currentIndex,
                     ref: ref,
                   ),
@@ -173,10 +183,16 @@ class _ChatsScreenState extends ConsumerState<ChatsScreen> {
     });
   }
 
-  Future<void> _deleteChat(String id) async {
+  Future<void> _deleteChat(Companion companion) async {
     final prefs = await SharedPreferences.getInstance();
+    final userId = AuthService().currentUserId ?? "guest_123";
+    
+    // 1. Delete permanently from Firestore and local cache
+    await MemoryService().deleteChatPermanently(userId, companion.name);
+
+    // 2. Remove companion from recent_chats list
     setState(() {
-      _recentChats.remove(id);
+      _recentChats.remove(companion.id);
     });
     await prefs.setStringList('recent_chats', _recentChats);
   }
@@ -275,7 +291,22 @@ class _ChatsScreenState extends ConsumerState<ChatsScreen> {
             ),
             child: const Icon(Icons.delete_outline, color: ChatrixTheme.errorRose),
           ),
-          onDismissed: (_) => _deleteChat(companion.id),
+          confirmDismiss: (direction) async {
+            return await showDialog<bool>(
+              context: context,
+              builder: (context) => AlertDialog(
+                backgroundColor: ChatrixTheme.surface,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                title: Text("Delete Conversation", style: GoogleFonts.playfairDisplay(color: ChatrixTheme.errorRose, fontWeight: FontWeight.bold)),
+                content: Text("Are you sure you want to permanently delete your chat with ${companion.name}? This action cannot be undone.", style: GoogleFonts.inter(color: Colors.white70)),
+                actions: [
+                  TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel", style: TextStyle(color: Colors.white54))),
+                  TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Delete", style: TextStyle(color: ChatrixTheme.errorRose, fontWeight: FontWeight.bold))),
+                ],
+              ),
+            );
+          },
+          onDismissed: (_) => _deleteChat(companion),
           child: _buildChatItem(context, companion, index),
         );
       },
@@ -537,7 +568,11 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
               Expanded(
                 child: companionsAsync.when(
                   data: (companions) {
-                    var filtered = companions;
+                    var filtered = companions.where((c) {
+                      final isUnknown = c.name.toLowerCase().trim() == 'unknown' || c.name.trim().isEmpty;
+                      final isPrivate = !c.isPublic;
+                      return !isUnknown && !isPrivate;
+                    }).toList();
 
                     // Apply tag filter
                     if (_selectedTag != 'all') {
@@ -1019,6 +1054,282 @@ class _PresenceScreenState extends ConsumerState<PresenceScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════
+// MY AI SCREEN — User Created Companions
+// ═══════════════════════════════════════════════
+class MyAIsScreen extends ConsumerStatefulWidget {
+  const MyAIsScreen({Key? key}) : super(key: key);
+
+  @override
+  ConsumerState<MyAIsScreen> createState() => _MyAIsScreenState();
+}
+
+class _MyAIsScreenState extends ConsumerState<MyAIsScreen> {
+  @override
+  Widget build(BuildContext context) {
+    final companionsAsync = ref.watch(companionsProvider);
+    final currentUserId = AuthService().currentUserId ?? "anonymous_user";
+
+    return Scaffold(
+      backgroundColor: ChatrixTheme.background,
+      body: Container(
+        decoration: ChatrixTheme.cinematicBackground,
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+                child: Text(
+                  "My AI",
+                  style: GoogleFonts.playfairDisplay(
+                    color: ChatrixTheme.textPrimary,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+                child: Text(
+                  "Your privately engineered custom souls",
+                  style: GoogleFonts.inter(
+                    color: ChatrixTheme.textTertiary,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+
+              // Creation Grid
+              Expanded(
+                child: companionsAsync.when(
+                  data: (companions) {
+                    final userCreations = companions.where((c) =>
+                      c.creatorId == currentUserId
+                    ).toList();
+
+                    if (userCreations.isEmpty) {
+                      return _buildEmptyState(context);
+                    }
+
+                    return GridView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        childAspectRatio: 0.82,
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
+                      ),
+                      itemCount: userCreations.length,
+                      itemBuilder: (context, index) => _buildCreationCard(context, userCreations[index], index),
+                    );
+                  },
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(color: ChatrixTheme.silverMist, strokeWidth: 2),
+                  ),
+                  error: (_, __) => Center(
+                    child: Text("Unable to load creations", style: GoogleFonts.inter(color: Colors.white38)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'my_ai_fab',
+        backgroundColor: ChatrixTheme.surface,
+        foregroundColor: Colors.white70,
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AICreationStudio()),
+        ).then((_) {
+          ref.invalidate(companionsProvider);
+        }),
+        icon: const Icon(Icons.add, size: 20),
+        label: Text(
+          "Create",
+          style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.psychology_outlined,
+              size: 64,
+              color: Colors.white.withOpacity(0.12),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              "No custom AIs created yet",
+              style: GoogleFonts.inter(
+                color: Colors.white70,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "Awaken your own companion, personalize their voice, archetype, and emotional spectrum.",
+              style: GoogleFonts.inter(
+                color: Colors.white38,
+                fontSize: 13,
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white.withOpacity(0.08),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: Colors.white.withOpacity(0.1)),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AICreationStudio()),
+              ).then((_) {
+                ref.invalidate(companionsProvider);
+              }),
+              child: const Text("Awaken Soul"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCreationCard(BuildContext context, Companion companion, int index) {
+    final hasImg = companion.imagePath != null;
+    return RepaintBoundary(
+      child: GestureDetector(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => ChatScreen(companion: companion)),
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            color: ChatrixTheme.surface.withOpacity(0.25),
+            border: Border.all(color: Colors.white.withOpacity(0.05)),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                companion.themeColor.withOpacity(0.04),
+                Colors.transparent,
+              ],
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Center(
+                    child: Container(
+                      width: 68,
+                      height: 68,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: hasImg ? null : companion.fallbackGradient,
+                        image: hasImg
+                            ? DecorationImage(
+                                image: AssetImage(companion.imagePath!),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
+                        border: Border.all(
+                          color: companion.themeColor.withOpacity(0.2),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: hasImg
+                          ? null
+                          : Center(
+                              child: Text(
+                                companion.initials,
+                                style: GoogleFonts.playfairDisplay(
+                                  color: Colors.white.withOpacity(0.7),
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.0,
+                                ),
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: (companion.isPublic ? Colors.greenAccent : ChatrixTheme.neonPink).withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        companion.isPublic ? "PUBLIC" : "PRIVATE",
+                        style: TextStyle(
+                          color: companion.isPublic ? Colors.greenAccent : ChatrixTheme.neonPink,
+                          fontSize: 8,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                    ),
+                    if (companion.isPremium)
+                      Icon(Icons.star_rounded, color: ChatrixTheme.champagneGold, size: 12),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  companion.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    height: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  companion.archetype,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(fontSize: 11, color: Colors.white38),
+                ),
+              ],
+            ),
+          ),
+        ).animate(delay: Duration(milliseconds: 60 + (index * 25))).fadeIn(),
       ),
     );
   }

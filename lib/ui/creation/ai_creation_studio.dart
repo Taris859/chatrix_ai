@@ -6,9 +6,7 @@ import 'dart:ui';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/theme.dart';
-import '../../models/companion.dart';
 import '../../models/scene.dart';
 import '../../scenes/particle_background.dart';
 import '../../auth/auth_service.dart';
@@ -47,6 +45,18 @@ class _AICreationStudioState extends State<AICreationStudio> {
   Color _selectedThemeColor = const Color(0xFF00FFCC); // Bioluminescence default
   String _themeColorHex = "#00FFCC";
   String _selectedAvatar = "Aria";
+
+  String _selectedGender = "Female";
+  String _selectedVoiceId = "EXAVITQu4vr4xnSDxMaL"; // Default Sarah (Premium Female Voice)
+
+  final List<Map<String, String>> _voices = [
+    {"name": "Sarah (Premium Female)", "id": "EXAVITQu4vr4xnSDxMaL", "gender": "Female"},
+    {"name": "Adam (Premium Male)", "id": "jhBzyKbsdeM6F66SZCaK", "gender": "Male"},
+    {"name": "Dante (Deep & Seductive Male)", "id": "WtHkyNC9q67bYvLejE3N", "gender": "Male"},
+    {"name": "Valentina (Seductive Female)", "id": "4tRn1lSkEn13EVTuqb0g", "gender": "Female"},
+    {"name": "Aria (Warm & Gentle Female)", "id": "4BAlflaQyhIcCfHiEI7x", "gender": "Female"},
+    {"name": "Arthur (Charming Young Male)", "id": "1SaGpH4wLZDmppsPYVpx", "gender": "Male"},
+  ];
 
   final List<String> _avatars = [
     'Aria', 'Dante', 'Evelyn', 'Julian', 'Lana', 'Leo', 'Ryker', 'Seraphina', 'Valentina',
@@ -251,6 +261,7 @@ class _AICreationStudioState extends State<AICreationStudio> {
         'theme_color': _themeColorHex,
         'premium_only': false,
         'created_by': userId,
+        'creatorId': userId,
         'is_public': _isPublic,
         'speaking_style': _selectedSpeakingStyle,
         'relationship_energy': _selectedRelationshipEnergy,
@@ -261,6 +272,8 @@ class _AICreationStudioState extends State<AICreationStudio> {
         'danger_level': _dangerLevel,
         'conversation_energy': _conversationEnergy,
         'avatar_name': _selectedAvatar,
+        'gender': _selectedGender.toLowerCase(),
+        'voice_id': _selectedVoiceId,
       };
 
       // 1. Dynamic write to Cloud Firestore
@@ -330,6 +343,9 @@ class _AICreationStudioState extends State<AICreationStudio> {
                             if (v == null || v.trim().isEmpty) return "Anchor their name first.";
                             return null;
                           }),
+                          const SizedBox(height: 12),
+                          _buildGenderSelector(),
+                          const SizedBox(height: 28),
                           _buildSectionTitle("CHOOSE AVATAR PORTRAIT (DP)"),
                           const SizedBox(height: 16),
                           _buildAvatarSelector(),
@@ -410,6 +426,8 @@ class _AICreationStudioState extends State<AICreationStudio> {
                           _buildDropdown("Speaking Style", _selectedSpeakingStyle, _speakingStyles, (v) => setState(() => _selectedSpeakingStyle = v!)),
                           const SizedBox(height: 16),
                           _buildDropdown("Starting Relationship", _selectedRelationshipEnergy, _relationshipEnergies, (v) => setState(() => _selectedRelationshipEnergy = v!)),
+                          const SizedBox(height: 16),
+                          _buildVoiceSelector(),
                           const SizedBox(height: 28),
                           
                           _buildSectionTitle("VISUAL ACCENT THEME"),
@@ -716,6 +734,103 @@ class _AICreationStudioState extends State<AICreationStudio> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildGenderSelector() {
+    final List<String> genders = ["Female", "Male", "Non-Binary"];
+    return Row(
+      children: genders.map((g) {
+        final isSelected = _selectedGender == g;
+        return Expanded(
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedGender = g;
+                // Automatically update default voice to match selected gender
+                if (g == "Female") {
+                  _selectedVoiceId = "EXAVITQu4vr4xnSDxMaL";
+                } else if (g == "Male") {
+                  _selectedVoiceId = "jhBzyKbsdeM6F66SZCaK";
+                } else {
+                  _selectedVoiceId = "EXAVITQu4vr4xnSDxMaL";
+                }
+              });
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: isSelected ? _selectedThemeColor.withOpacity(0.12) : Colors.white.withOpacity(0.02),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isSelected ? _selectedThemeColor : Colors.white.withOpacity(0.08),
+                  width: 1.5,
+                ),
+              ),
+              child: Center(
+                child: Text(
+                  g,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : Colors.white54,
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildVoiceSelector() {
+    final genderFilteredVoices = _voices.where((v) {
+      if (_selectedGender == "Non-Binary") return true;
+      return v["gender"] == _selectedGender;
+    }).toList();
+
+    // Ensure _selectedVoiceId exists in the filtered list, otherwise fallback to the first matched one
+    if (!genderFilteredVoices.any((v) => v["id"] == _selectedVoiceId)) {
+      if (genderFilteredVoices.isNotEmpty) {
+        _selectedVoiceId = genderFilteredVoices.first["id"]!;
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.02),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButtonFormField<String>(
+          value: _selectedVoiceId,
+          dropdownColor: const Color(0xFF0F0C16),
+          style: const TextStyle(color: Colors.white, fontSize: 14),
+          decoration: const InputDecoration(
+            labelText: "Select voice model",
+            labelStyle: TextStyle(color: Colors.white30, fontSize: 12),
+            border: InputBorder.none,
+          ),
+          items: genderFilteredVoices.map((v) {
+            return DropdownMenuItem<String>(
+              value: v["id"],
+              child: Text(v["name"]!),
+            );
+          }).toList(),
+          onChanged: (val) {
+            if (val != null) {
+              setState(() {
+                _selectedVoiceId = val;
+              });
+            }
+          },
+        ),
       ),
     );
   }

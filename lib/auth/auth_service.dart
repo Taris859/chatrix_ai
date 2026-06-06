@@ -4,6 +4,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/services.dart';
 import '../services/notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -101,6 +102,17 @@ class AuthService {
   /// Sign in with Google with robust ApiException 10 error detection
   Future<UserCredential?> signInWithGoogle() async {
     try {
+      if (kIsWeb) {
+        final GoogleAuthProvider googleProvider = GoogleAuthProvider();
+        final userCredential = await _auth.signInWithPopup(googleProvider);
+        await _createUserRecordIfNew(userCredential.user);
+        
+        // Sync player ID asynchronously
+        NotificationService().syncPlayerIdToFirestore();
+        
+        return userCredential;
+      }
+
       // Trigger Google Sign-In
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {

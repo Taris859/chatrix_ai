@@ -3,7 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:convert';
-import 'dart:math';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/companion.dart';
 import '../models/scene.dart';
@@ -27,6 +26,12 @@ final companionsProvider = FutureProvider<List<Companion>>((ref) async {
         try {
           final Map<String, dynamic> data = jsonDecode(raw);
           final id = data['id'] ?? UniqueKey().toString();
+          
+          final companionName = data['name'] ?? data['Name'] ?? data['displayName'] ?? '';
+          if (companionName.toString().toLowerCase().trim() == 'unknown' || companionName.toString().trim().isEmpty) {
+            continue; // Filter out UNKNOWN local companions
+          }
+
           if (!seenIds.contains(id)) {
             Companion? baseCompanion;
             for (final c in fallback) {
@@ -51,10 +56,35 @@ final companionsProvider = FutureProvider<List<Companion>>((ref) async {
   List<Companion> cloudList = [];
   try {
     final firestore = ref.watch(firestoreProvider);
-
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
-    final snapshot = await firestore.collection('ai_companions').get();
-    cloudList = snapshot.docs.map((doc) {
+
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs = [];
+    try {
+      final snapshot = await firestore.collection('ai_companions').get();
+      docs = snapshot.docs;
+    } catch (e) {
+      print("Querying all companions failed (probably due to security rules): $e. Retrying with specific public & creator filters...");
+      final publicSnapshot = await firestore.collection('ai_companions').where('is_public', isEqualTo: true).get();
+      docs = List<QueryDocumentSnapshot<Map<String, dynamic>>>.from(publicSnapshot.docs);
+      
+      if (currentUserId != null) {
+        final creatorSnapshot = await firestore.collection('ai_companions').where('created_by', isEqualTo: currentUserId).get();
+        for (var doc in creatorSnapshot.docs) {
+          if (!docs.any((d) => d.id == doc.id)) {
+            docs.add(doc);
+          }
+        }
+        
+        final creatorSnapshotAlt = await firestore.collection('ai_companions').where('creatorId', isEqualTo: currentUserId).get();
+        for (var doc in creatorSnapshotAlt.docs) {
+          if (!docs.any((d) => d.id == doc.id)) {
+            docs.add(doc);
+          }
+        }
+      }
+    }
+
+    cloudList = docs.map((doc) {
       final id = doc.id;
       final data = doc.data();
       
@@ -66,6 +96,11 @@ final companionsProvider = FutureProvider<List<Companion>>((ref) async {
         return null; // Private AI created by someone else
       }
       
+      final companionName = data['name'] ?? data['Name'] ?? data['displayName'] ?? data['full_name'] ?? data['character_name'] ?? '';
+      if (companionName.toString().toLowerCase().trim() == 'unknown' || companionName.toString().trim().isEmpty) {
+        return null; // Filter out UNKNOWN named companions
+      }
+
       if (!seenIds.contains(id)) {
         seenIds.add(id);
         Companion? baseCompanion;

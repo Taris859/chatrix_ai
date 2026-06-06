@@ -228,11 +228,19 @@ def apply_promo(request: PromoRequest, background_tasks: BackgroundTasks):
         expiry_date = datetime.datetime.now() + datetime.timedelta(days=days)
         expiry_str = f"{expiry_date.day}/{expiry_date.month}/{expiry_date.year}"
         try:
-            user_ref = db.collection('users').document(request.user_id)
-            user_ref.set({
-                'premium_status': True,
-                'premium_expiry': expiry_str
-            }, merge=True)
+            # Try to update Firestore from backend
+            try:
+                if db is not None:
+                    user_ref = db.collection('users').document(request.user_id)
+                    user_ref.set({
+                        'premium_status': True,
+                        'premium_expiry': expiry_str
+                    }, merge=True)
+                    print(f"Promo Code: Successfully upgraded user {request.user_id} to Premium via backend.")
+                else:
+                    print("Promo Code: Firestore client is uninitialized, skipping backend database update.")
+            except Exception as fe:
+                print(f"Promo Code: Firestore write failed (falling back to client-side write): {fe}")
             
             # Send welcome/subscription email if an email was provided
             if request.email:
@@ -246,9 +254,14 @@ def apply_promo(request: PromoRequest, background_tasks: BackgroundTasks):
                     expiry=expiry_str
                 )
                 
-            return {"status": "success", "message": "Promo code applied successfully.", "expiry": expiry_str}
+            return {
+                "status": "success",
+                "message": "Promo code applied successfully.",
+                "expiry": expiry_str,
+                "days": days
+            }
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Firestore error applying promo code: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Error applying promo code: {str(e)}")
     else:
         raise HTTPException(status_code=400, detail="Invalid promo code.")
 

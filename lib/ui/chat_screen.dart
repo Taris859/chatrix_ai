@@ -342,7 +342,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
       builder: (context) => AlertDialog(
         backgroundColor: ChatrixTheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text("Clear Chat", style: GoogleFonts.playfairDisplay(color: ChatrixTheme.errorRose, fontWeight: FontWeight.bold)),
+        title: Text("Clear Chat", style: GoogleFonts.inter(fontSize: 18, color: ChatrixTheme.errorRose, fontWeight: FontWeight.bold)),
         content: Text("Are you sure you want to delete this chat history? This action cannot be undone.", style: GoogleFonts.inter(color: Colors.white70)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel", style: TextStyle(color: Colors.white54))),
@@ -351,7 +351,35 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
       ),
     );
     if (confirm == true) {
-      setState(() => _messages.clear());
+      // 1. Delete permanently from Firestore and local cache
+      await _memoryService.deleteChatPermanently(_userId, widget.companion.name);
+
+      // 2. Remove from recent_chats list in SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      List<String> recentChats = prefs.getStringList('recent_chats') ?? [];
+      recentChats.remove(widget.companion.id);
+      await prefs.setStringList('recent_chats', recentChats);
+
+      // 3. Reset state with greeting
+      final greeting = widget.companion.greeting;
+      String action = "";
+      String text = greeting;
+      if (greeting.contains("*") && greeting.lastIndexOf("*") > greeting.indexOf("*")) {
+         int firstStar = greeting.indexOf("*");
+         int secondStar = greeting.indexOf("*", firstStar + 1);
+         action = greeting.substring(firstStar, secondStar + 1);
+         text = greeting.replaceFirst(action, "").trim();
+      }
+
+      setState(() {
+        _messages = [
+          {
+            "isUser": false,
+            "text": text,
+            if (action.isNotEmpty) "action": action,
+          }
+        ];
+      });
       _saveLocalCache();
     }
   }
@@ -430,12 +458,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        "AMBIENT ESCAPE",
-                        style: GoogleFonts.cinzel(
+                        "Ambient Escape",
+                        style: GoogleFonts.inter(
                           color: Colors.white,
                           fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 2.0,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.2,
                         ),
                       ),
                       IconButton(
@@ -518,10 +546,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
     }
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: const Color(0xFF0F1012),
       body: Stack(
         children: [
-
+          if (widget.companion.imagePath != null)
+            Positioned.fill(
+              child: Opacity(
+                opacity: 0.10,
+                child: Image.asset(
+                  widget.companion.imagePath!,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
           SafeArea(
             child: Column(
               children: [
@@ -558,8 +595,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: _currentScene!.backgroundGradient[0].withOpacity(0.5),
-            border: Border(bottom: BorderSide(color: _currentScene!.accentColor.withOpacity(0.1))),
+            color: const Color(0xFF0F1012).withOpacity(0.8),
+            border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.08))),
           ),
           child: Row(
             children: [
@@ -606,12 +643,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                   children: [
                     Text(
                       widget.companion.name,
-                      style: Theme.of(context).textTheme.titleLarge,
+                      style: GoogleFonts.inter(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
                     ),
+                    const SizedBox(height: 2),
                     Text(
-                      "Online",
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: ChatrixTheme.textSecondary,
+                      "Active now",
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
+                        color: Colors.white60,
                       ),
                     ),
                   ],
@@ -629,7 +673,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
               ),
               // Relationship Journal Toggle
               IconButton(
-                icon: Icon(Icons.auto_stories, color: _currentScene!.accentColor),
+                icon: Icon(Icons.auto_stories, color: widget.companion.themeColor),
                 onPressed: () {
                   Navigator.push(
                     context,
@@ -651,8 +695,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
       height: 120,
       padding: const EdgeInsets.symmetric(vertical: 16),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.6),
-        border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
+        color: const Color(0xFF0F1012),
+        border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.08))),
       ),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
@@ -677,12 +721,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
               width: 140,
               margin: const EdgeInsets.only(right: 12),
               decoration: BoxDecoration(
+                color: const Color(0xFF1D1F23),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: isSelected ? scene.accentColor : Colors.white.withOpacity(0.1), width: isSelected ? 2 : 1),
-                gradient: LinearGradient(
-                  colors: [scene.backgroundGradient[0].withOpacity(0.8), scene.backgroundGradient.last.withOpacity(0.8)],
+                border: Border.all(
+                  color: isSelected ? scene.accentColor : Colors.white10,
+                  width: isSelected ? 1.5 : 1.0,
                 ),
-                boxShadow: isSelected ? [BoxShadow(color: scene.accentColor.withOpacity(0.3), blurRadius: 10)] : [],
               ),
               child: Stack(
                 children: [
@@ -692,7 +736,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                       child: Text(
                         scene.name, 
                         textAlign: TextAlign.center, 
-                        style: TextStyle(color: isSelected ? scene.accentColor : Colors.white, fontWeight: FontWeight.bold)
+                        style: GoogleFonts.inter(
+                          color: isSelected ? scene.accentColor : Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                   ),
@@ -729,9 +777,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
     bool isUser = msg["isUser"] ?? (msg["role"] == "user");
     String textContent = msg["text"] ?? msg["content"] ?? "";
     
-    // Dynamic emotional UI glows based on the action tags in asterisks
+    // Dynamic emotional UI borders based on the action tags in asterisks
     Color glowColor = Colors.transparent;
-    double glowRadius = 0;
     
     if (!isUser) {
       final action = msg["action"]?.toString().toLowerCase() ?? "";
@@ -739,20 +786,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
       if (action.contains("possessive") || action.contains("mine") || action.contains("grip") || 
           action.contains("clench") || action.contains("danger") || action.contains("shadow") || 
           action.contains("locked") || action.contains("tight")) {
-        // Crimson glow for possessive / tense moments
-        glowColor = const Color(0xFFD91636).withOpacity(0.2);
-        glowRadius = 12.0;
+        // Crimson for possessive / tense moments
+        glowColor = const Color(0xFFD91636);
       } else if (action.contains("gentle") || action.contains("caress") || action.contains("warm") || 
                  action.contains("soft") || action.contains("whisper") || action.contains("smile") || 
                  action.contains("blush") || action.contains("lip") || action.contains("closer")) {
-        // Warm gold/amber glow for intimate / affectionate moments
-        glowColor = const Color(0xFFFFB300).withOpacity(0.25);
-        glowRadius = 12.0;
+        // Warm gold/amber for intimate / affectionate moments
+        glowColor = const Color(0xFFFFB300);
       } else if (action.contains("cold") || action.contains("distant") || action.contains("narrow") || 
                  action.contains("sigh") || action.contains("professor") || action.contains("sterile")) {
-        // Cold blue/steel glow for distance / analytical tension
-        glowColor = const Color(0xFF4682B4).withOpacity(0.2);
-        glowRadius = 12.0;
+        // Cold blue/steel for distance / analytical tension
+        glowColor = const Color(0xFF4682B4);
       }
     }
     
@@ -761,57 +805,45 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-        child: ClipRRect(
+        decoration: BoxDecoration(
+          color: isUser 
+              ? const Color(0xFF2B2D31)
+              : const Color(0xFF202124),
           borderRadius: BorderRadius.circular(20),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: isUser 
-                    ? _currentScene?.accentColor.withOpacity(0.15)
-                    : _currentScene?.backgroundGradient[0].withOpacity(0.5),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isUser 
-                      ? (_currentScene?.accentColor.withOpacity(0.3) ?? Colors.white)
-                      : (glowColor != Colors.transparent ? glowColor : Colors.white.withOpacity(0.05)),
-                  width: glowColor != Colors.transparent ? 1.5 : 1.0,
-                ),
-                boxShadow: [
-                  if (glowRadius > 0 && !isUser)
-                    BoxShadow(
-                      color: glowColor,
-                      blurRadius: glowRadius,
-                      spreadRadius: 2,
-                    ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (msg["action"] != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4.0),
-                      child: Text(
-                        msg["action"],
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontStyle: FontStyle.italic,
-                          color: _currentScene?.accentColor.withOpacity(0.8),
-                        ),
-                      ),
-                    ),
-                  if (textContent.isNotEmpty)
-                    Text(
-                      textContent,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: isUser ? Colors.white : ChatrixTheme.textPrimary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          border: Border.all(
+            color: !isUser 
+                ? (glowColor != Colors.transparent ? glowColor : widget.companion.themeColor).withOpacity(0.12)
+                : Colors.white.withOpacity(0.08),
+            width: 1.0,
           ),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (msg["action"] != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4.0),
+                child: Text(
+                  msg["action"],
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                    fontStyle: FontStyle.italic,
+                    color: Colors.white60,
+                  ),
+                ),
+              ),
+            if (textContent.isNotEmpty)
+              Text(
+                textContent,
+                style: GoogleFonts.inter(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                  color: Colors.white,
+                ),
+              ),
+          ],
         ),
       ),
     ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.1, duration: 300.ms);
@@ -911,19 +943,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    "Awaken Their Voice",
-                    style: GoogleFonts.cinzel(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                    "Voice Preview",
+                    style: GoogleFonts.inter(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
                       color: Colors.white,
-                      letterSpacing: 1.5,
+                      letterSpacing: 0.2,
                     ),
                   ),
                   const SizedBox(height: 12),
                   Text(
                     "You are offered 1 free promotional voice call. Experience the breathtaking presence of ${widget.companion.name} in real-time.",
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13, height: 1.5),
+                    style: GoogleFonts.inter(color: Colors.white.withOpacity(0.7), fontSize: 13, height: 1.5),
                   ),
                   const SizedBox(height: 28),
                   SizedBox(
@@ -986,19 +1018,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    "Premium Voice Calling",
-                    style: GoogleFonts.cinzel(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                    "Voice Calling",
+                    style: GoogleFonts.inter(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
                       color: Colors.white,
-                      letterSpacing: 1.5,
+                      letterSpacing: 0.2,
                     ),
                   ),
                   const SizedBox(height: 12),
                   Text(
                     "You have used your promotional free call.\nUpgrade to Premium for unlimited voice calls and deep emotional connection.",
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13, height: 1.5),
+                    style: GoogleFonts.inter(color: Colors.white.withOpacity(0.7), fontSize: 13, height: 1.5),
                   ),
                   const SizedBox(height: 28),
                   SizedBox(
@@ -1063,83 +1095,83 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
   }
 
   Widget _buildInputArea() {
-    return ClipRRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-          decoration: BoxDecoration(
-            color: _currentScene?.backgroundGradient[0].withOpacity(0.6),
-            border: Border(top: BorderSide(color: _currentScene?.accentColor.withOpacity(0.1) ?? Colors.white)),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: _isRecording ? ChatrixTheme.neonPink.withOpacity(0.5) : Colors.white.withOpacity(0.1)
-                    ),
-                  ),
-                  child: TextField(
-                    controller: _messageController,
-                    enabled: !_isTyping,
-                    style: TextStyle(color: _isTyping ? Colors.white38 : Colors.white),
-                    decoration: InputDecoration(
-                      hintText: _isTyping ? "Wait for reply..." : (_isRecording ? "Listening..." : "Whisper something..."),
-                      hintStyle: TextStyle(color: _isTyping ? Colors.white24 : (_isRecording ? ChatrixTheme.neonPink : ChatrixTheme.textSecondary)),
-                      border: InputBorder.none,
-                    ),
-                    onSubmitted: (_) {
-                      if (!_isTyping) _sendMessage();
-                    },
-                  ),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1012),
+        border: Border(top: BorderSide(color: Colors.white.withOpacity(0.08))),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF1D1F23),
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(
+                  color: _isRecording ? widget.companion.themeColor : Colors.white.withOpacity(0.08),
+                  width: 1.0,
                 ),
               ),
-              const SizedBox(width: 12),
-              
-              // Voice / Send Button
-              GestureDetector(
-                onTap: () {
-                  if (_isTyping) return;
-                  if (_hasText) {
-                    _sendMessage();
-                  } else {
-                    _toggleRecording();
-                  }
-                },
-                child: Opacity(
-                  opacity: _isTyping ? 0.3 : 1.0,
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _isRecording ? ChatrixTheme.neonPink : ChatrixTheme.surface,
-                      boxShadow: [
-                        if (_isRecording)
-                          BoxShadow(
-                            color: ChatrixTheme.neonPink.withOpacity(0.4),
-                            blurRadius: 12,
-                            spreadRadius: 4,
-                          )
-                      ]
-                    ),
-                    child: Icon(
-                      _hasText 
-                        ? Icons.send 
-                        : (_isRecording ? Icons.mic : Icons.mic_none),
-                      color: _isRecording ? Colors.white : ChatrixTheme.bioluminescence, 
-                      size: 24
-                    ),
-                  ).animate(target: _isRecording ? 1 : 0).scale(end: const Offset(1.1, 1.1)),
+              child: TextField(
+                controller: _messageController,
+                enabled: !_isTyping,
+                style: GoogleFonts.inter(
+                  color: _isTyping ? Colors.white38 : Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
                 ),
-              )
-            ],
+                decoration: InputDecoration(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  hintText: _isTyping ? "Wait for reply..." : (_isRecording ? "Listening..." : "Whisper something..."),
+                  hintStyle: GoogleFonts.inter(
+                    color: _isTyping ? Colors.white24 : (_isRecording ? widget.companion.themeColor : ChatrixTheme.textSecondary),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                  ),
+                  border: InputBorder.none,
+                ),
+                onSubmitted: (_) {
+                  if (!_isTyping) _sendMessage();
+                },
+              ),
+            ),
           ),
-        ),
+          const SizedBox(width: 12),
+          
+          // Voice / Send Button
+          GestureDetector(
+            onTap: () {
+              if (_isTyping) return;
+              if (_hasText) {
+                _sendMessage();
+              } else {
+                _toggleRecording();
+              }
+            },
+            child: Opacity(
+              opacity: _isTyping ? 0.3 : 1.0,
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _isRecording ? widget.companion.themeColor : const Color(0xFF1D1F23),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.08),
+                    width: 1.0,
+                  ),
+                ),
+                child: Icon(
+                  _hasText 
+                    ? Icons.send 
+                    : (_isRecording ? Icons.mic : Icons.mic_none),
+                  color: Colors.white, 
+                  size: 24,
+                ),
+              ).animate(target: _isRecording ? 1 : 0).scale(end: const Offset(1.1, 1.1)),
+            ),
+          )
+        ],
       ),
     );
   }

@@ -216,4 +216,22 @@ class MemoryService {
       rethrow;
     }
   }
+
+  /// Permanently delete a single companion's chat history/memory for a user
+  Future<void> deleteChatPermanently(String userId, String companionName) async {
+    try {
+      // 1. Clear SharedPreferences cache keys
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('chat_${userId}_$companionName');
+      await prefs.remove('memory_${userId}_$companionName');
+
+      // 2. Delete the document from Cloud Firestore
+      final chatId = '${userId}_$companionName';
+      await _firestore.collection('chats').doc(chatId).delete();
+      print("Permanently deleted chat history for companion $companionName");
+    } catch (e) {
+      print("Error permanently deleting chat $companionName: $e");
+      rethrow;
+    }
+  }
 }

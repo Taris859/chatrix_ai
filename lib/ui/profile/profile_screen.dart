@@ -12,6 +12,9 @@ import '../settings_screen.dart';
 import '../premium/subscription_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../memory/memory_service.dart';
+import 'about_screen.dart';
+import 'privacy_policy_screen.dart';
+
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -167,6 +170,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     if (confirm == true) {
       await AuthService().signOut();
+      if (mounted) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
     }
   }
 
@@ -219,6 +225,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           await user.delete();
           
           await AuthService().signOut();
+          if (mounted) {
+            Navigator.of(context).popUntil((route) => route.isFirst);
+          }
         }
       } catch (e) {
         print("Error deleting account: $e");
@@ -421,6 +430,28 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             ),
 
                             _buildActionCard(
+                              icon: Icons.info_outline_rounded,
+                              title: "About Chatrix",
+                              subtitle: "Mission, story, and contact channels",
+                              color: ChatrixTheme.silverMist,
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const AboutScreen()),
+                              ),
+                            ),
+
+                            _buildActionCard(
+                              icon: Icons.description_outlined,
+                              title: "Privacy Policy",
+                              subtitle: "Learn how your digital memories are secured",
+                              color: ChatrixTheme.silverMist,
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()),
+                              ),
+                            ),
+
+                            _buildActionCard(
                               icon: Icons.delete_outline_rounded,
                               title: "Clear Memory",
                               subtitle: "Wipe all conversational context",
@@ -509,18 +540,34 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            ChatrixTheme.amethyst.withOpacity(0.4),
-            ChatrixTheme.roseDust.withOpacity(0.2),
-          ],
+          colors: _isPremium
+              ? [
+                  ChatrixTheme.champagneGold,
+                  const Color(0xFFFFDF73).withOpacity(0.6),
+                ]
+              : [
+                  ChatrixTheme.amethyst.withOpacity(0.4),
+                  ChatrixTheme.roseDust.withOpacity(0.2),
+                ],
         ),
-        border: Border.all(color: Colors.white.withOpacity(0.1), width: 2),
+        border: Border.all(
+          color: _isPremium ? ChatrixTheme.champagneGold : Colors.white.withOpacity(0.1),
+          width: _isPremium ? 3 : 2,
+        ),
+        boxShadow: [
+          if (_isPremium)
+            BoxShadow(
+              color: ChatrixTheme.champagneGold.withOpacity(0.4),
+              blurRadius: 15,
+              spreadRadius: 2,
+            ),
+        ],
       ),
       child: Center(
         child: Text(
           initial,
           style: GoogleFonts.playfairDisplay(
-            color: Colors.white.withOpacity(0.8),
+            color: _isPremium ? Colors.black : Colors.white.withOpacity(0.8),
             fontSize: 36,
             fontWeight: FontWeight.bold,
           ),

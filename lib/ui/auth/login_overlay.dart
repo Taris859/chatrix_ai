@@ -312,7 +312,38 @@ class _LoginOverlayState extends ConsumerState<LoginOverlay> with SingleTickerPr
                     ),
                   ),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 12),
+
+                  // Guest/Wanderer Access Button
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 56),
+                      side: BorderSide(
+                        color: ChatrixTheme.accentGold.withOpacity(0.25),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      backgroundColor: Colors.white.withOpacity(0.02),
+                    ),
+                    onPressed: state.isAuthLoading ? null : () => _handleAuth(2),
+                    icon: const Icon(
+                      Icons.explore_outlined,
+                      color: ChatrixTheme.accentGold,
+                      size: 24,
+                    ),
+                    label: Text(
+                      "Explore as Guest",
+                      style: GoogleFonts.inter(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
 
                   // Mode Toggle Button
                   TextButton(

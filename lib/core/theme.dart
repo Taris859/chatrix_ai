@@ -48,16 +48,36 @@ class ChatrixTheme {
         error: errorRose,
       ),
       textTheme: GoogleFonts.interTextTheme().copyWith(
-        displayLarge: GoogleFonts.playfairDisplay(
+        displayLarge: GoogleFonts.inter(
           color: textPrimary,
-          fontWeight: FontWeight.bold,
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
         ),
         titleLarge: GoogleFonts.inter(
           color: textPrimary,
+          fontSize: 18,
           fontWeight: FontWeight.w600,
         ),
-        bodyLarge: GoogleFonts.inter(color: textPrimary, fontSize: 16),
-        bodyMedium: GoogleFonts.inter(color: textSecondary, fontSize: 14),
+        titleMedium: GoogleFonts.inter(
+          color: textPrimary,
+          fontSize: 15,
+          fontWeight: FontWeight.w500,
+        ),
+        bodyLarge: GoogleFonts.inter(
+          color: textPrimary,
+          fontSize: 16,
+          fontWeight: FontWeight.w400,
+        ),
+        bodyMedium: GoogleFonts.inter(
+          color: textSecondary,
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+        ),
+        bodySmall: GoogleFonts.inter(
+          color: textSecondary,
+          fontSize: 13,
+          fontWeight: FontWeight.w400,
+        ),
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,

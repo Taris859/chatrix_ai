@@ -12,7 +12,7 @@ class RazorpayService {
     try {
       final response = await http.get(
         Uri.parse('${AppConstants.backendBaseUrl}/config'),
-      );
+      ).timeout(const Duration(seconds: 15));
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
       } else {
@@ -38,7 +38,7 @@ class RazorpayService {
           'amount': amountPaise,
           'user_id': userId,
         }),
-      );
+      ).timeout(const Duration(seconds: 15));
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
       } else {
@@ -75,7 +75,7 @@ class RazorpayService {
           if (amount != null) 'amount': amount,
           if (expiry != null) 'expiry': expiry,
         }),
-      );
+      ).timeout(const Duration(seconds: 15));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return data['verified'] == true;
@@ -86,5 +86,32 @@ class RazorpayService {
       print("RazorpayService payment verification exception: $e");
     }
     return false;
+  }
+
+  /// Securely verify and apply promo code on our FastAPI backend.
+  Future<Map<String, dynamic>?> applyPromo({
+    required String userId,
+    required String code,
+    String? email,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AppConstants.backendBaseUrl}/apply_promo'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'user_id': userId,
+          'code': code,
+          if (email != null) 'email': email,
+        }),
+      ).timeout(const Duration(seconds: 15));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        print("RazorpayService promo application error: ${response.statusCode} - ${response.body}");
+      }
+    } catch (e) {
+      print("RazorpayService promo application exception: $e");
+    }
+    return null;
   }
 }

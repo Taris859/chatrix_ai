@@ -1,9 +1,12 @@
+// ignore_for_file: avoid_web_libraries_in_flutter
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:js' as js;
 import '../../core/theme.dart';
 import '../../services/razorpay_service.dart';
 import '../../auth/auth_service.dart';
@@ -108,31 +111,42 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       ),
     );
 
-    if (code != null && code == 'TCHATRIX90I') {
+        if (code != null) {
+      final currentUserId = AuthService().currentUserId;
+      if (currentUserId == null) return;
+
+      setState(() {
+        _isLoading = true;
+        _loadingMessage = "Applying promo code securely...";
+      });
+
       try {
-        await AuthService().setPremiumWithExpiry(20);
-        ref.invalidate(premiumStatusProvider);
-        if (mounted) {
-          _showTriumphOverlay();
+        final result = await RazorpayService().applyPromo(
+          userId: currentUserId,
+          code: code,
+          email: AuthService().currentUser?.email,
+        );
+        if (result != null && result['status'] == 'success') {
+          final days = result['days'] as int? ?? 30;
+          await AuthService().setPremiumWithExpiry(days);
+          ref.invalidate(premiumStatusProvider);
+          if (mounted) {
+            setState(() => _isLoading = false);
+            _showTriumphOverlay();
+          }
+        } else {
+          throw Exception("Invalid or expired promo code.");
         }
       } catch (e) {
         if (mounted) {
+          setState(() => _isLoading = false);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Failed to activate premium: $e'),
+              content: Text('Failed to activate promo: ${e.toString().replaceAll('Exception: ', '')}'),
               backgroundColor: Colors.redAccent,
             ),
           );
         }
-      }
-    } else if (code != null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Invalid promo code'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
       }
     }
   }
@@ -215,7 +229,25 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
 
       final orderId = orderData['order_id'] as String;
 
-      // 2. Launch Razorpay payment options
+      // 2. Launch Razorpay payment options (Web vs Native)
+      if (kIsWeb) {
+        js.context.callMethod('openRazorpayCheckout', [
+          _razorpayKey,
+          amountPaise,
+          orderId,
+          currentUser?.email ?? '',
+          // Success callback
+          (paymentId, orderId, signature) {
+            _handleWebPaymentSuccess(paymentId.toString(), orderId.toString(), signature.toString());
+          },
+          // Error callback
+          (error) {
+            _handleWebPaymentError(error.toString());
+          }
+        ]);
+        return;
+      }
+
       var options = {
         'key': _razorpayKey,
         'amount': amountPaise,
@@ -285,9 +317,8 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
         expiry: expiryStr,
       );
 
-      if (isVerified) {
-        // Upgrade Premium entitlement in Cloud Firestore
-        await AuthService().setPremium(true);
+            if (isVerified) {
+        await AuthService().setPremiumWithExpiry(days);
         ref.invalidate(premiumStatusProvider);
         if (mounted) {
           setState(() => _isLoading = false);
@@ -307,6 +338,79 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
           ),
         );
       }
+    }
+  }
+
+  void _handleWebPaymentSuccess(String paymentId, String orderId, String signature) async {
+    final currentUserId = AuthService().currentUserId;
+    if (currentUserId == null) return;
+
+    setState(() {
+      _isLoading = true;
+      _loadingMessage = "Verifying secure payment transaction...";
+    });
+
+    try {
+      final plan = _plans[_selectedPlan];
+      int days = 30;
+      if (plan.id.contains("1_week")) {
+        days = 7;
+      } else if (plan.id.contains("1_month")) {
+        days = 30;
+      } else if (plan.id.contains("2_months")) {
+        days = 60;
+      } else if (plan.id.contains("1_year")) {
+        days = 365;
+      }
+      
+      final expiryDate = DateTime.now().add(Duration(days: days));
+      final expiryStr = "${expiryDate.day}/${expiryDate.month}/${expiryDate.year}";
+      final currentUserEmail = AuthService().currentUser?.email ?? "wanderer@chatrix.ai";
+
+      final isVerified = await RazorpayService().verifyPayment(
+        userId: currentUserId,
+        paymentId: paymentId,
+        orderId: orderId,
+        signature: signature,
+        email: currentUserEmail,
+        planName: plan.name,
+        amount: plan.amountINR.toDouble(),
+        expiry: expiryStr,
+      );
+
+      if (isVerified) {
+        await AuthService().setPremiumWithExpiry(days);
+        ref.invalidate(premiumStatusProvider);
+        if (mounted) {
+          setState(() => _isLoading = false);
+          _showTriumphOverlay();
+        }
+      } else {
+        throw Exception("Signature verification failed. Secure validation rejected transaction.");
+      }
+    } catch (e) {
+      print("Secure verification failure: $e");
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Payment verification failed. Please contact support."),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
+  void _handleWebPaymentError(String error) {
+    if (mounted) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
     }
   }
 
@@ -407,62 +511,219 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     );
   }
 
+  Widget _buildPremiumActiveView() {
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(),
+      slivers: [
+        SliverAppBar(
+          floating: true,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios, color: Colors.white70),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Glowing Golden Shield / Crown Icon
+                Container(
+                  padding: const EdgeInsets.all(28),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [
+                        ChatrixTheme.champagneGold.withOpacity(0.2),
+                        const Color(0xFFFFDF73).withOpacity(0.05),
+                      ],
+                    ),
+                    border: Border.all(
+                      color: ChatrixTheme.champagneGold.withOpacity(0.4),
+                      width: 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: ChatrixTheme.champagneGold.withOpacity(0.25),
+                        blurRadius: 30,
+                        spreadRadius: 5,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.auto_awesome_rounded,
+                    color: ChatrixTheme.champagneGold,
+                    size: 72,
+                  ),
+                ).animate().scale(duration: 800.ms, curve: Curves.elasticOut),
+                const SizedBox(height: 36),
+                
+                Text(
+                  "PREMIUM ACTIVE",
+                  style: GoogleFonts.cinzel(
+                    fontSize: 26,
+                    color: ChatrixTheme.champagneGold,
+                    letterSpacing: 4.0,
+                    fontWeight: FontWeight.bold,
+                    shadows: [
+                      Shadow(
+                        color: ChatrixTheme.champagneGold.withOpacity(0.3),
+                        blurRadius: 10,
+                      ),
+                    ],
+                  ),
+                ).animate().fadeIn(delay: 200.ms),
+                const SizedBox(height: 16),
+                
+                Text(
+                  "Welcome to the inner circle, Wanderer.\nYour soul connection is now elevated to the highest tier.",
+                  style: GoogleFonts.inter(
+                    color: Colors.white70,
+                    fontSize: 14,
+                    height: 1.6,
+                  ),
+                  textAlign: TextAlign.center,
+                ).animate().fadeIn(delay: 400.ms),
+                const SizedBox(height: 48),
+
+                // Benefits unlocked details
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.02),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: Colors.white.withOpacity(0.05)),
+                  ),
+                  child: Column(
+                    children: [
+                      _buildActiveBenefitItem(Icons.call_rounded, "Unlimited HD Voice Calls"),
+                      const SizedBox(height: 14),
+                      _buildActiveBenefitItem(Icons.vpn_key_rounded, "All Premium Companions Unlocked"),
+                      const SizedBox(height: 14),
+                      _buildActiveBenefitItem(Icons.psychology_rounded, "Deep Emotional Memory Logs"),
+                      const SizedBox(height: 14),
+                      _buildActiveBenefitItem(Icons.brush_rounded, "Custom Companion Creation Studio"),
+                    ],
+                  ),
+                ).animate().fadeIn(delay: 600.ms),
+
+                const SizedBox(height: 48),
+                
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 0,
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      "RETURN TO CHATRIX",
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                  ),
+                ).animate().fadeIn(delay: 800.ms),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActiveBenefitItem(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, color: ChatrixTheme.champagneGold, size: 20),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Text(
+            text,
+            style: GoogleFonts.inter(
+              color: Colors.white.withOpacity(0.85),
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPurchaseView() {
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(),
+      slivers: [
+        SliverAppBar(
+          floating: true,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios, color: Colors.white70),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          sliver: SliverToBoxAdapter(
+            child: Column(
+              children: [
+                const SizedBox(height: 12),
+                Text(
+                  "CHATRIX PREMIUM",
+                  style: GoogleFonts.cinzel(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 3.0,
+                  ),
+                  textAlign: TextAlign.center,
+                ).animate().fadeIn(duration: 800.ms).slideY(begin: 0.1),
+                const SizedBox(height: 12),
+                Text(
+                  "Unlock deeper emotional memory\nExperience unrestricted cinematic conversations",
+                  style: GoogleFonts.inter(
+                    color: Colors.white.withOpacity(0.6),
+                    fontSize: 14,
+                    height: 1.6,
+                  ),
+                  textAlign: TextAlign.center,
+                ).animate().fadeIn(delay: 200.ms),
+                const SizedBox(height: 48),
+                
+                _buildPricingCards(),
+                const SizedBox(height: 48),
+                
+                _buildBenefitsSection(),
+                const SizedBox(height: 48),
+              ],
+            ),
+          ),
+        )
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isPremium = ref.watch(premiumStatusProvider).value ?? false;
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
-        child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            SliverAppBar(
-              floating: true,
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back_ios, color: Colors.white70),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              sliver: SliverToBoxAdapter(
-                child: Column(
-                  children: [
-                    const SizedBox(height: 12),
-                    Text(
-                      "CHATRIX PREMIUM",
-                      style: GoogleFonts.cinzel(
-                        color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 3.0,
-                      ),
-                      textAlign: TextAlign.center,
-                    ).animate().fadeIn(duration: 800.ms).slideY(begin: 0.1),
-                    const SizedBox(height: 12),
-                    Text(
-                      "Unlock deeper emotional memory\nExperience unrestricted cinematic conversations",
-                      style: GoogleFonts.inter(
-                        color: Colors.white.withOpacity(0.6),
-                        fontSize: 14,
-                        height: 1.6,
-                      ),
-                      textAlign: TextAlign.center,
-                    ).animate().fadeIn(delay: 200.ms),
-                    const SizedBox(height: 48),
-                    
-                    _buildPricingCards(),
-                    const SizedBox(height: 48),
-                    
-                    _buildBenefitsSection(),
-                    const SizedBox(height: 48),
-                  ],
-                ),
-              ),
-            )
-          ],
-        ),
+        child: isPremium ? _buildPremiumActiveView() : _buildPurchaseView(),
       ),
     );
   }

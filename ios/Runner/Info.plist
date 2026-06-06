@@ -70,5 +70,13 @@
 	<string>Speech recognition is required to transcribe user comments during live calls.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Microphone access is required to capture user audio during live voice calls.</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>phonepe</string>
+		<string>tez</string>
+		<string>paytmmp</string>
+		<string>bhim</string>
+		<string>upi</string>
+	</array>
 </dict>
 </plist>

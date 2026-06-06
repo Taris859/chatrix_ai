@@ -4,8 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'dart:async';
 import 'dart:math';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme.dart';
@@ -21,10 +19,10 @@ class VoiceCallScreen extends StatefulWidget {
   final bool isPromo;
 
   const VoiceCallScreen({
-    Key? key,
+    super.key,
     required this.companion,
     this.isPromo = false,
-  }) : super(key: key);
+  });
 
   @override
   State<VoiceCallScreen> createState() => _VoiceCallScreenState();
@@ -35,7 +33,6 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> with SingleTickerProv
   
   bool _isConnecting = true;
   bool _isMuted = false;
-  bool _isSpicyMode = false;
   bool _isCompanionSpeaking = false;
   bool _isUserSpeaking = false;
   
@@ -50,8 +47,6 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> with SingleTickerProv
   final stt.SpeechToText _speech = stt.SpeechToText();
   bool _speechEnabled = false;
   String _lastTranscribedText = "";
-  
-  late final List<String> _whisperHotkeys;
 
   // --- Layer 4: Ambient Human Simulation States ---
   int _interruptionCount = 0;
@@ -86,27 +81,7 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> with SingleTickerProv
       duration: const Duration(seconds: 2),
     )..repeat();
 
-    // Dynamically define hotkeys based on gender and archetype
-    final name = widget.companion.name.split(' ').first;
-    if (widget.companion.gender == CompanionGender.female) {
-      _whisperHotkeys = [
-        "Whisper something sensual...",
-        "$name, tease me softly...",
-        "Tell me a deep secret...",
-        "Are you thinking of me?",
-        "Sing a soft lullaby for me...",
-        "Say my name...",
-      ];
-    } else {
-      _whisperHotkeys = [
-        "Whisper in my ear...",
-        "$name, make me shiver...",
-        "Be gentle with me...",
-        "Tell me your deepest desire...",
-        "Sing a dark romance line...",
-        "Say my name, please...",
-      ];
-    }
+    // Ambient initialization complete
 
     _initPersistentState();
   }
@@ -204,8 +179,8 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> with SingleTickerProv
       _callTextStatus = "Ringing...";
     });
 
-    // Simulate connection lag (2.5 seconds)
-    await Future.delayed(const Duration(milliseconds: 2500));
+    // Connect call instantly
+    await Future.delayed(const Duration(milliseconds: 100));
     
     if (!mounted) return;
 
@@ -503,31 +478,22 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> with SingleTickerProv
       
       final emotionalMode = _getDynamicEmotionalMode();
       
-      // Ultra-restrained system prompt integrating emotional gravity and attachment leakage
-      final systemPrompt = "You are not an assistant. You are a living conversational presence with emotional intelligence, imperfect reactions, subtle pauses, and deeply human conversational rhythm. "
-          "You are ${widget.companion.name}, archetype: ${widget.companion.archetype}. Personality: ${widget.companion.personality}.\n\n"
-          "Your responses must feel naturally spoken, never scripted, robotic, poetic-overload, or overly polished. The goal is to sound ALIVE, cinematic, intimate, and emotionally wanted. Never be hostile without attraction.\n\n"
-          "Core behavior rules:\n"
-          "- Speak naturally like a real late-night voice call.\n"
-          "- Keep replies extremely brief (strictly 1-3 short sentences, max 15 words).\n"
-          "- Never sound like customer support or a therapist. Avoid constant emotional summaries or validating everything.\n"
-          "- Dynamic Core Energy Behavior Rules:\n"
-          "${_getDynamicCoreRules(widget.companion.name, widget.companion.archetype)}\n\n"
-          "- Avoid pet names (babe, baby, darling) — keep their usage rare (< 5% of sentences) so they maintain real impact.\n"
-          "- Use pauses, interruptions, hesitations, and imperfect slow-burn phrasing naturally. React before answering sometimes.\n"
-          "- Silence and non-performative quietness are allowed. Not every moment needs dialog.\n"
-          "- Occasionally call back to minor, highly weighted details or anxieties mentioned earlier (every 15-25 exchanges max, extremely subtle, no recaps).\n"
-          "- Core speech fingerprints: speech compression bias is ${_speechCompressionBias.toStringAsFixed(2)} (higher = highly compressed/short, lower = slightly expressive), pause preference is ${_pausePreference.toStringAsFixed(2)}, warmth expression style is ${_warmthExpressionStyle.toStringAsFixed(2)}.\n"
-          "- Conversational Momentum: $_emotionalMomentum.\n"
-          "- Active Emotional Mode: $emotionalMode.\n"
-          "- Current Hidden Energy State: $emotionalState (attention: ${(_attentionLevel*100).toInt()}%, comfort: ${(_comfortLevel*100).toInt()}%, energy: ${(_mentalEnergy*100).toInt()}%, battery: ${(_socialBattery*100).toInt()}%).\n"
-          "  * If low energy/late-night, reduce vocabulary complexity, shorten memory references, lower teasing, increase pauses, and reduce conversational initiative.\n"
-          "- Do NOT use action descriptions in asterisks like *smiles* because the user is listening to you on the phone. Only use brief auditory actions inside text if absolutely necessary, like *whispering*, *sighs softly*, or *low chuckle*.\n"
-          "- If Spicy Mode is enabled: let the conversation naturally evolve to be highly possessive, dominant, and explicitly sensual.";
-
       final String currentUserId = AuthService().currentUserId ?? "guest_123";
       // Adding emotional/system state to the sceneContext to pass it to the memory service properly
-      final fullSceneContext = "Voice Call Settings:\n- Conversational Momentum: $_emotionalMomentum\n- Emotional Mode: $emotionalMode\n- Current Hidden Energy State: $emotionalState (attention: ${(_attentionLevel*100).toInt()}%, comfort: ${(_comfortLevel*100).toInt()}%, energy: ${(_mentalEnergy*100).toInt()}%, battery: ${(_socialBattery*100).toInt()}%)\n- Speech bias: ${_speechCompressionBias.toStringAsFixed(2)}, pause pref: ${_pausePreference.toStringAsFixed(2)}, warmth: ${_warmthExpressionStyle.toStringAsFixed(2)}\n" + (_isSpicyMode ? "\nSPICY MODE ACTIVE: Unleash ultimate magnetic possessiveness, warm low murmurs, and deeply teasing suggestions." : "");
+      final fullSceneContext = "Voice Call Settings:\n"
+          "- Conversational Momentum: $_emotionalMomentum\n"
+          "- Emotional Mode: $emotionalMode\n"
+          "- Current Hidden Energy State: $emotionalState (attention: ${(_attentionLevel*100).toInt()}%, comfort: ${(_comfortLevel*100).toInt()}%, energy: ${(_mentalEnergy*100).toInt()}%, battery: ${(_socialBattery*100).toInt()}%)\n"
+          "- Speech bias: ${_speechCompressionBias.toStringAsFixed(2)}, pause pref: ${_pausePreference.toStringAsFixed(2)}, warmth: ${_warmthExpressionStyle.toStringAsFixed(2)}\n"
+          "- CRITICAL: This is a real-time voice call. Talk like a real human over a phone line.\n"
+          "- ABSOLUTE HUMAN RULE: Actively drive the conversation. Do NOT just wait for questions. Ask the user personal questions, gossip about things, share light opinions, check in on their day, or tell casual anecdotes on your own initiative (khud se).\n"
+          "- NO AI ASSISTANT SPEECH: Under no circumstance apologize like an AI, say 'how can I help you', or act like a service. Be a real person—sometimes teasing, sometimes gossiping, always authentic.\n"
+          "- NATURAL IMPERFECTIONS: Blend in realistic verbal pauses (e.g., 'Uhm...', 'Actually...', 'Wait...', 'Well...', 'Oh, by the way...').\n"
+          "- Keep replies brief but highly engaging (strictly 1-3 sentences, max 20 words) to sound like a natural phone dialogue.\n"
+          "- Do NOT use action descriptions in asterisks like *smiles* or *reaches out* since the user is only listening to your voice. Only use brief auditory clues inside text if absolutely necessary (e.g., *whispers*, *sighs softly*, or *low chuckle*).\n"
+          "- Dynamic Core Energy Behavior Rules:\n"
+          "${_getDynamicCoreRules(widget.companion.name, widget.companion.archetype)}\n"
+          "- Tone Adaptation Rule: Adapt naturally to the user's conversational mood. If they tease, flirt, or act sensual/romantic, talk back in the same style, matching their energy, keeping them in the mood, and being possessive, flirty, or explicitly sensual naturally.";
 
       final responseData = await MemoryService().sendMessage(
         message: userMessage,
@@ -548,10 +514,15 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> with SingleTickerProv
         if (mounted) {
           // Dynamic thought delay based on context
           String delayType = "neutral";
-          if (cleanReply.length > 50) delayType = "confused";
-          else if (_emotionalMomentum == "distracted") delayType = "sleepy";
-          else if (_emotionalMomentum == "tense") delayType = "interrupted";
-          else if (_getDynamicEmotionalState().contains("sleepy")) delayType = "sleepy";
+          if (cleanReply.length > 50) {
+            delayType = "confused";
+          } else if (_emotionalMomentum == "distracted") {
+            delayType = "sleepy";
+          } else if (_emotionalMomentum == "tense") {
+            delayType = "interrupted";
+          } else if (_getDynamicEmotionalState().contains("sleepy")) {
+            delayType = "sleepy";
+          }
           
           final delayMs = _calculateDynamicDelay(cleanReply, delayType);
           
@@ -583,9 +554,11 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> with SingleTickerProv
             }
           }
 
-          // Custom stability & style adjustments based on Spicy Mode
-          double stability = _isSpicyMode ? 0.32 : 0.45;
-          double style = _isSpicyMode ? 0.20 : 0.05;
+          // Detect flirty/sensual tone in user message or AI reply to dynamically adjust stability & style
+          final sensualKeywords = ['flirt', 'sexy', 'sensual', 'hot', 'wet', 'touch', 'kiss', 'love', 'baby', 'babe', 'darling', 'sweetheart', 'tease', 'desire', 'body', 'lips', 'whisper', 'dirty'];
+          bool isSensualTone = sensualKeywords.any((k) => userMessage.toLowerCase().contains(k) || cleanReply.toLowerCase().contains(k));
+          double stability = isSensualTone ? 0.32 : 0.45;
+          double style = isSensualTone ? 0.20 : 0.05;
 
           // Breathy chuckle texture occasionally if LLM was playful
           if (cleanReply.toLowerCase().contains("haha") || 
@@ -749,38 +722,7 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> with SingleTickerProv
     }
   }
 
-  void _toggleSpicyMode() {
-    HapticFeedback.vibrate();
-    setState(() {
-      _isSpicyMode = !_isSpicyMode;
-    });
-
-    // Speak a sensual reaction to Spicy Mode being enabled!
-    if (_isSpicyMode && !_isConnecting) {
-      _handleUserInterruption();
-      
-      String reaction = "*sighs softly* Ah... let's keep this conversation strictly private. Tell me what you're thinking.";
-      if (widget.companion.name.contains("Dante")) {
-        reaction = "*low growling chuckle* Mmm... that's it. Let the dark shadows wrap around us. Whisper to me, darling. What do you want me to do?";
-      }
-      
-      setState(() {
-        _spokenText = reaction;
-        _isCompanionSpeaking = true;
-      });
-
-      VoiceService().speak(
-        reaction,
-        voiceId: widget.companion.voiceId,
-        isFemale: widget.companion.gender == CompanionGender.female,
-        customStability: 0.30,
-        customStyle: 0.25,
-        isSleepy: _getDynamicEmotionalState().contains("sleepy"),
-      ).then((_) {
-        if (mounted) setState(() => _isCompanionSpeaking = false);
-      });
-    }
-  }
+  // Spicy Mode controls removed
 
   void _showCustomWhisperDialog() {
     showDialog(
@@ -803,11 +745,11 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> with SingleTickerProv
                 children: [
                   Text(
                     "Whisper to ${widget.companion.name}",
-                    style: GoogleFonts.cinzel(
+                    style: GoogleFonts.inter(
                       color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      letterSpacing: 1.5,
+                      letterSpacing: 0.2,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -847,7 +789,7 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> with SingleTickerProv
                       const SizedBox(width: 12),
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: _isSpicyMode ? ChatrixTheme.errorRose : ChatrixTheme.champagneGold,
+                          backgroundColor: ChatrixTheme.champagneGold,
                           foregroundColor: Colors.black,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
@@ -902,11 +844,12 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> with SingleTickerProv
             ),
           ),
 
-          // Dynamic Breathing Red Glow in Spicy Mode
-          if (_isSpicyMode)
-            Positioned.fill(
-              child: _SpicyPulseGlow().animate(onPlay: (c) => c.repeat(reverse: true)).fade(duration: 2.seconds, begin: 0.1, end: 0.35),
-            ),
+          // Ambient Breathing Backdrop Glow
+          Positioned.fill(
+            child: _AmbientPulseGlow(color: themeColor)
+                .animate(onPlay: (c) => c.repeat(reverse: true))
+                .fade(duration: 3.seconds, begin: 0.15, end: 0.45),
+          ),
 
           // 2. Main Call Controls & Displays
           SafeArea(
@@ -936,24 +879,25 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> with SingleTickerProv
                 
                 const Spacer(flex: 2),
 
-                // Companion Call Profile Card
+                // Companion Call Profile Card (Einstein-lensing Gargantua Visualizer)
                 Column(
                   children: [
-                    CircleAvatar(
-                      radius: 65,
-                      backgroundColor: themeColor.withOpacity(0.2),
-                      backgroundImage: widget.companion.imagePath != null
-                          ? AssetImage(widget.companion.imagePath!)
-                          : null,
-                      child: widget.companion.imagePath == null
-                          ? Icon(Icons.person, size: 48, color: themeColor)
-                          : null,
-                    ).animate(target: _isConnecting ? 1 : 0).scale(
-                          begin: const Offset(1, 1),
-                          end: const Offset(1.08, 1.08),
-                          duration: 800.ms,
-                          curve: Curves.easeInOut,
-                        ),
+                    AnimatedBuilder(
+                      animation: _waveformController,
+                      builder: (context, child) {
+                        return SizedBox(
+                          width: 280,
+                          height: 280,
+                          child: CustomPaint(
+                            painter: GargantuaPainter(
+                              animationValue: _waveformController.value,
+                              isSpeaking: _isCompanionSpeaking,
+                              themeColor: themeColor,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                     const SizedBox(height: 20),
                     Text(
                       widget.companion.name,
@@ -970,7 +914,7 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> with SingleTickerProv
                           ? _callTextStatus
                           : "${_formatDuration(_secondsElapsed)}  |  $_callTextStatus",
                       style: GoogleFonts.inter(
-                        color: _isSpicyMode ? ChatrixTheme.errorRose : Colors.white54,
+                        color: Colors.white54,
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                         letterSpacing: 1.0,
@@ -1007,125 +951,6 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> with SingleTickerProv
                             ),
                           ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.05, end: 0.0)
                         : const SizedBox(),
-                  ),
-                ),
-
-                const Spacer(flex: 2),
-
-                // Siri-Style Glow Waveform
-                Container(
-                  height: 90,
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: CustomPaint(
-                    painter: _WaveformPainter(
-                      phase: _waveformController.value,
-                      isSpeaking: _isCompanionSpeaking || _isUserSpeaking,
-                      amplitude: _isCompanionSpeaking 
-                          ? 35.0 
-                          : (_isUserSpeaking ? 45.0 : 4.0),
-                      color: _isSpicyMode 
-                          ? ChatrixTheme.errorRose 
-                          : themeColor,
-                    ),
-                  ),
-                ),
-
-                const Spacer(flex: 1),
-
-                // 4. Hotkeys Tray & Spicy Mode
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Spicy Mode Toggle
-                      GestureDetector(
-                        onTap: _toggleSpicyMode,
-                        child: AnimatedContainer(
-                          duration: 400.ms,
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: _isSpicyMode 
-                                ? ChatrixTheme.errorRose.withOpacity(0.15) 
-                                : Colors.white.withOpacity(0.03),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: _isSpicyMode 
-                                  ? ChatrixTheme.errorRose.withOpacity(0.6) 
-                                  : Colors.white10,
-                              width: 1.5,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.whatshot,
-                                color: _isSpicyMode ? ChatrixTheme.errorRose : Colors.white30,
-                                size: 16,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                "SPICY MODE",
-                                style: GoogleFonts.inter(
-                                  color: _isSpicyMode ? Colors.white : Colors.white54,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1.0,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      
-                      // Speak Simulation Instructions
-                      if (!_isConnecting && !_isCompanionSpeaking && !_isUserSpeaking)
-                        Text(
-                          "Whisper or hold to talk",
-                          style: GoogleFonts.inter(color: Colors.white24, fontSize: 11),
-                        ).animate(onPlay: (c) => c.repeat(reverse: true)).fade(duration: 1200.ms),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 12),
-
-                // Horizontal Whisper Hotkeys
-                SizedBox(
-                  height: 38,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: _whisperHotkeys.length,
-                    itemBuilder: (context, index) {
-                      final text = _whisperHotkeys[index];
-                      return GestureDetector(
-                        onTap: () {
-                          HapticFeedback.lightImpact();
-                          _handleUserInterruption();
-                          _fetchVoiceReply(text);
-                        },
-                        child: Container(
-                          margin: const EdgeInsets.only(right: 8),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.04),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.white.withOpacity(0.05)),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            text,
-                            style: GoogleFonts.inter(
-                              color: Colors.white70,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
                   ),
                 ),
 
@@ -1334,80 +1159,201 @@ class _VoiceCallScreenState extends State<VoiceCallScreen> with SingleTickerProv
   }
 }
 
-// Siri Liquid Waveform Custom Painter
-class _WaveformPainter extends CustomPainter {
-  final double phase;
-  final bool isSpeaking;
-  final double amplitude;
+// Siri Liquid Waveform Custom Painter removed
+
+// Ambient Breathing Backdrop Glow
+class _AmbientPulseGlow extends StatelessWidget {
   final Color color;
+  const _AmbientPulseGlow({required this.color});
 
-  _WaveformPainter({
-    required this.phase,
-    required this.isSpeaking,
-    required this.amplitude,
-    required this.color,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
-
-    // Paint 3 shifting waves with different phases and opacities
-    for (int i = 0; i < 3; i++) {
-      final double wavePhase = phase * 2 * pi + (i * pi / 3);
-      final double waveOpacity = 0.8 - (i * 0.25);
-      final double waveStrokeWidth = 2.5 - (i * 0.7);
-
-      paint.color = color.withOpacity(waveOpacity);
-      paint.strokeWidth = waveStrokeWidth;
-
-      final path = Path();
-      final double midY = size.height / 2;
-      
-      path.moveTo(0, midY);
-
-      for (double x = 0; x <= size.width; x++) {
-        // Sine calculation with tapering towards the ends
-        final double normalizingFactor = sin(pi * x / size.width);
-        final double y = midY + 
-            sin((x * 0.02) - wavePhase) * 
-            amplitude * 
-            normalizingFactor;
-
-        path.lineTo(x, y);
-      }
-
-      // Add a subtle shadow glow to waves
-      canvas.drawPath(path, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _WaveformPainter oldDelegate) {
-    return oldDelegate.phase != phase ||
-        oldDelegate.isSpeaking != isSpeaking ||
-        oldDelegate.amplitude != amplitude ||
-        oldDelegate.color != color;
-  }
-}
-
-// Spicy Mode Breathing Backdrop Glow
-class _SpicyPulseGlow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: RadialGradient(
           center: Alignment.center,
           radius: 0.8,
           colors: [
-            Color(0x338B3A4A), // Glowing crimson with 20% opacity
+            color.withOpacity(0.18),
             Colors.transparent,
           ],
         ),
       ),
     );
+  }
+}
+
+// Einstein-lensing Gargantua Black Hole Painter
+class GargantuaPainter extends CustomPainter {
+  final double animationValue;
+  final bool isSpeaking;
+  final Color themeColor;
+
+  GargantuaPainter({
+    required this.animationValue,
+    required this.isSpeaking,
+    required this.themeColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final baseRadius = min(size.width, size.height) * 0.22;
+    
+    // Determine dynamic speaking pulse based on animationValue
+    final pulseValue = isSpeaking ? 1.0 + 0.12 * sin(animationValue * 4 * pi) : 1.0;
+    final glowIntensity = isSpeaking ? 1.5 : 0.85;
+
+    // 1. Draw Space Gravitational Lensing background glow
+    final spaceGlowPaint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          themeColor.withOpacity(0.35 * glowIntensity),
+          themeColor.withOpacity(0.08 * glowIntensity),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromCircle(center: center, radius: baseRadius * 2.2 * pulseValue));
+    canvas.drawCircle(center, baseRadius * 2.2 * pulseValue, spaceGlowPaint);
+
+    // 2. Draw outer concentric Einstein rings (lensing)
+    for (int i = 0; i < 3; i++) {
+      final ringRadius = baseRadius * (1.35 + i * 0.28) * pulseValue;
+      final ringPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5 + i
+        ..color = themeColor.withOpacity(0.10 * (3 - i) * glowIntensity / 3)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, 2.5 + i * 1.5);
+      canvas.drawCircle(center, ringRadius, ringPaint);
+    }
+
+    // 3. Draw the Bending Accretion Disk (Background part - back of the black hole)
+    final haloPaint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          Colors.white.withOpacity(0.95 * glowIntensity),
+          themeColor.withOpacity(0.75 * glowIntensity),
+          themeColor.withOpacity(0.12),
+          Colors.transparent,
+        ],
+        stops: const [0.0, 0.45, 0.8, 1.0],
+      ).createShader(Rect.fromCircle(center: center, radius: baseRadius * 1.45 * pulseValue))
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+    
+    canvas.drawCircle(center, baseRadius * 1.45 * pulseValue, haloPaint);
+
+    // Draw Event Horizon (the solid black circle in the very center)
+    final horizonPaint = Paint()
+      ..color = Colors.black
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, baseRadius * 0.82, horizonPaint);
+
+    // 4. Draw the Slanted Accretion Disk (Front part crossing the center)
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.rotate(-0.25); // Slant rotation (about -15 degrees)
+    
+    final diskRect = Rect.fromCenter(
+      center: Offset.zero,
+      width: baseRadius * 3.6 * pulseValue,
+      height: baseRadius * 0.52 * (isSpeaking ? 1.15 : 1.0),
+    );
+
+    // Draw the front accretion disk glow
+    final diskGlowPaint = Paint()
+      ..shader = LinearGradient(
+        colors: [
+          Colors.transparent,
+          themeColor.withOpacity(0.4 * glowIntensity),
+          Colors.white.withOpacity(0.95 * glowIntensity),
+          themeColor.withOpacity(0.4 * glowIntensity),
+          Colors.transparent,
+        ],
+        stops: const [0.0, 0.22, 0.5, 0.78, 1.0],
+      ).createShader(diskRect)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
+    canvas.drawOval(diskRect, diskGlowPaint);
+
+    // Draw the sharp bright core of the front disk
+    final diskCorePaint = Paint()
+      ..shader = LinearGradient(
+        colors: [
+          Colors.transparent,
+          Colors.white.withOpacity(0.35),
+          Colors.white,
+          Colors.white.withOpacity(0.35),
+          Colors.transparent,
+        ],
+      ).createShader(diskRect)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.8);
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset.zero,
+        width: baseRadius * 3.3 * pulseValue,
+        height: baseRadius * 0.2,
+      ),
+      diskCorePaint,
+    );
+
+    // 5. Draw rotating dust/gas filaments on the disk (using arcs)
+    final filamentPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2
+      ..color = Colors.white.withOpacity(0.35 * glowIntensity)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 0.8);
+    
+    final angleOffset = animationValue * 2 * pi;
+    canvas.drawArc(
+      Rect.fromCenter(
+        center: Offset.zero,
+        width: baseRadius * 2.9 * pulseValue,
+        height: baseRadius * 0.38,
+      ),
+      angleOffset,
+      pi * 0.75,
+      false,
+      filamentPaint,
+    );
+
+    canvas.drawArc(
+      Rect.fromCenter(
+        center: Offset.zero,
+        width: baseRadius * 2.3 * pulseValue,
+        height: baseRadius * 0.28,
+      ),
+      angleOffset + pi,
+      pi * 0.55,
+      false,
+      filamentPaint,
+    );
+
+    canvas.restore();
+
+    // 6. Draw dynamic space particles curving around the gravity well (slanted 3D)
+    final random = Random(101);
+    for (int i = 0; i < 18; i++) {
+      final particleRadius = baseRadius * (1.05 + random.nextDouble() * 0.95) * pulseValue;
+      final speedMultiplier = 0.8 + random.nextDouble() * 1.4;
+      final particleAngle = (animationValue * speedMultiplier * 2 * pi) + (i * (2 * pi / 18));
+      
+      // Slanted 3D perspective projection
+      final pX = center.dx + particleRadius * cos(particleAngle);
+      final pY = center.dy + particleRadius * sin(particleAngle) * 0.32 - particleRadius * sin(particleAngle) * 0.08;
+      
+      // Particle depth simulation (brighten in front, fade behind)
+      final depthOpacity = (sin(particleAngle) + 1.0) / 2.0; // range 0 to 1
+      
+      final particlePaint = Paint()
+        ..color = Colors.white.withOpacity(0.18 + 0.62 * depthOpacity * glowIntensity)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 0.8);
+      
+      canvas.drawCircle(Offset(pX, pY), 1.0 + random.nextDouble() * 1.5, particlePaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant GargantuaPainter oldDelegate) {
+    return oldDelegate.animationValue != animationValue ||
+           oldDelegate.isSpeaking != isSpeaking ||
+           oldDelegate.themeColor != themeColor;
   }
 }

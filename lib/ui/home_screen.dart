@@ -163,8 +163,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildContent(BuildContext context, List<Companion> allCompanions) {
+    // Filter out "Unknown" named companions and private companions from public lists
+    final publicCompanions = allCompanions.where((c) {
+      final isUnknown = c.name.toLowerCase().trim() == 'unknown' || c.name.trim().isEmpty;
+      final isPrivate = !c.isPublic;
+      return !isUnknown && !isPrivate;
+    }).toList();
+
     // Apply Filtering
-    var filteredCompanions = allCompanions;
+    var filteredCompanions = publicCompanions;
     bool isFiltering = false;
 
     if (_selectedGender != "All") {
@@ -252,7 +259,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         else
           // ── Curated Emotional Discovery Carousels ──
           SliverToBoxAdapter(
-            child: _buildDiscoveryCarousels(context, allCompanions),
+            child: _buildDiscoveryCarousels(context, publicCompanions),
           ),
 
         const SliverToBoxAdapter(child: SizedBox(height: 100)),
@@ -368,10 +375,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           Text(
             "CHATRIX",
             style: GoogleFonts.outfit(
-              color: Colors.white,
+              color: isPremium ? ChatrixTheme.champagneGold : Colors.white,
               fontSize: 22,
               fontWeight: FontWeight.w900,
               letterSpacing: 2.0,
+              shadows: isPremium
+                  ? [
+                      Shadow(
+                        color: ChatrixTheme.champagneGold.withOpacity(0.4),
+                        blurRadius: 8,
+                      )
+                    ]
+                  : null,
             ),
           ),
           const SizedBox(width: 8),
@@ -379,19 +394,45 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(6),
+              gradient: isPremium
+                  ? LinearGradient(
+                      colors: [
+                        ChatrixTheme.champagneGold,
+                        const Color(0xFFFFDF73),
+                      ],
+                    )
+                  : null,
+              color: isPremium ? null : const Color(0xFFE53935),
               border: Border.all(
                 color: isPremium ? ChatrixTheme.champagneGold : const Color(0xFFE53935),
                 width: 1.5,
               ),
+              boxShadow: [
+                if (isPremium)
+                  BoxShadow(
+                    color: ChatrixTheme.champagneGold.withOpacity(0.3),
+                    blurRadius: 6,
+                    spreadRadius: 1,
+                  ),
+              ],
             ),
-            child: Text(
-              isPremium ? "PREMIUM" : "BASIC",
-              style: TextStyle(
-                color: isPremium ? ChatrixTheme.champagneGold : const Color(0xFFE53935),
-                fontSize: 8,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 0.8,
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (isPremium) ...[
+                  const Icon(Icons.star_rounded, color: Colors.black, size: 10),
+                  const SizedBox(width: 3),
+                ],
+                Text(
+                  isPremium ? "PREMIUM" : "BASIC",
+                  style: TextStyle(
+                    color: isPremium ? Colors.black : const Color(0xFFE53935),
+                    fontSize: 8,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              ],
             ),
           ),
           const Spacer(),
@@ -402,15 +443,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               context,
               MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
             ),
+            isPremium: isPremium,
           ),
           const SizedBox(width: 8),
           _buildHeaderIcon(
             icon: Icons.person_rounded,
-            color: Colors.white70,
+            color: isPremium ? ChatrixTheme.champagneGold : Colors.white70,
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const ProfileScreen()),
             ),
+            isPremium: isPremium,
           ),
         ],
       ),
@@ -421,6 +464,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     required IconData icon,
     required Color color,
     required VoidCallback onTap,
+    bool isPremium = false,
   }) {
     return GestureDetector(
       onTap: onTap,
@@ -429,7 +473,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: ChatrixTheme.surface.withOpacity(0.35),
-          border: Border.all(color: Colors.white.withOpacity(0.05), width: 1),
+          border: Border.all(
+            color: isPremium ? ChatrixTheme.champagneGold.withOpacity(0.3) : Colors.white.withOpacity(0.05),
+            width: 1,
+          ),
+          boxShadow: [
+            if (isPremium && icon == Icons.star_rounded)
+              BoxShadow(
+                color: ChatrixTheme.champagneGold.withOpacity(0.2),
+                blurRadius: 8,
+                spreadRadius: 1,
+              ),
+          ],
         ),
         child: Icon(icon, color: color, size: 20),
       ),
