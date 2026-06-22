@@ -88,3 +88,92 @@ class PaymentService:
             raise HTTPException(status_code=400, detail="Signature verification failed.")
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+
+    @staticmethod
+    async def verify_paypal(user_id: str, transaction_id: str, plan_id: str, amount_usd: float, email: str = None, background_tasks = None):
+        import httpx
+        from datetime import datetime, timedelta
+
+        PAYPAL_CLIENT_ID = os.environ.get("PAYPAL_CLIENT_ID", "")
+        PAYPAL_CLIENT_SECRET = os.environ.get("PAYPAL_CLIENT_SECRET", "")
+        PAYPAL_API_BASE = "https://api-m.paypal.com"  # Production API base URL
+
+        if not PAYPAL_CLIENT_ID or not PAYPAL_CLIENT_SECRET:
+            print("PayPal credentials are not set in environment variables.")
+            return {"verified": False, "reason": "Credentials not configured"}
+
+        async def get_paypal_access_token() -> str:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"{PAYPAL_API_BASE}/v1/oauth2/token",
+                    auth=(PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET),
+                    data={"grant_type": "client_credentials"},
+                )
+                response.raise_for_status()
+                return response.json()["access_token"]
+
+        try:
+            access_token = await get_paypal_access_token()
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"{PAYPAL_API_BASE}/v1/reporting/transactions",
+                    headers={"Authorization": f"Bearer {access_token}"},
+                    params={
+                        "transaction_id": transaction_id,
+                        "fields": "all",
+                        "start_date": (datetime.utcnow() - timedelta(days=60)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                        "end_date": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    },
+                )
+
+            if response.status_code != 200:
+                print(f"PayPal transactions reporting endpoint error status: {response.status_code}")
+                return {"verified": False, "reason": "PayPal API reporting error"}
+
+            transactions = response.json().get("transaction_details", [])
+            if not transactions:
+                return {"verified": False, "reason": "Transaction not found"}
+
+            txn_info = transactions[0].get("transaction_info", {})
+            status = txn_info.get("transaction_status", "")
+            if status != "S":
+                return {"verified": False, "reason": f"Status is '{status}', not completed"}
+
+            txn_amount = float(txn_info.get("transaction_amount", {}).get("value", 0))
+            if abs(txn_amount - amount_usd) > 0.15:
+                return {"verified": False, "reason": "Amount mismatch"}
+
+            # Update premium status in Firestore
+            try:
+                if db is not None:
+                    expiry_date = datetime.now() + timedelta(days=30)
+                    expiry_str = f"{expiry_date.day}/{expiry_date.month}/{expiry_date.year}"
+                    
+                    user_ref = db.collection('users').document(user_id)
+                    user_ref.set({
+                        'premium_status': True,
+                        'premium_expiry': expiry_str
+                    }, merge=True)
+                    print(f"✅ PayPal verified: Upgraded user {user_id} to Premium via backend.")
+                else:
+                    print("Firestore client is uninitialized, skipping backend database update.")
+            except Exception as fe:
+                print(f"Firestore verification write failed: {fe}")
+
+            # Send welcome/subscription email if email is provided
+            if email and background_tasks:
+                background_tasks.add_task(
+                    send_subscription_email,
+                    to_email=email,
+                    user_id=user_id,
+                    payment_id=transaction_id,
+                    plan_name="Premium PayPal Upgrade",
+                    amount=amount_usd,
+                    expiry="30 days from now"
+                )
+
+            return {"verified": True}
+
+        except Exception as e:
+            print(f"PayPal verify error: {e}")
+            return {"verified": False, "reason": str(e)}

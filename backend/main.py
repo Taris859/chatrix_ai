@@ -133,6 +133,13 @@ class PaymentVerifyRequest(BaseModel):
     amount: Optional[float] = None
     expiry: Optional[str] = None
 
+class PaypalVerifyRequest(BaseModel):
+    user_id: str
+    transaction_id: str
+    plan_id: str
+    amount_usd: float
+    email: Optional[str] = None
+
 class TriggerPresenceRequest(BaseModel):
     ignore_cooldown: bool = False
     ignore_silence: bool = False
@@ -207,6 +214,17 @@ async def verify_payment(request: PaymentVerifyRequest, background_tasks: Backgr
         plan_name=request.plan_name,
         amount=request.amount,
         expiry=request.expiry,
+        background_tasks=background_tasks
+    )
+
+@app.post("/verify_paypal")
+async def verify_paypal(request: PaypalVerifyRequest, background_tasks: BackgroundTasks):
+    return await PaymentService.verify_paypal(
+        user_id=request.user_id,
+        transaction_id=request.transaction_id,
+        plan_id=request.plan_id,
+        amount_usd=request.amount_usd,
+        email=request.email,
         background_tasks=background_tasks
     )
 
