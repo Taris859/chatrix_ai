@@ -11,11 +11,11 @@ import '../core/theme.dart';
 import 'chat_screen.dart';
 import '../services/firestore_repository.dart';
 import '../models/companion.dart';
-import '../auth/auth_service.dart';
 import '../auth/auth_provider.dart';
 import 'premium/subscription_screen.dart';
 import 'creation/ai_creation_studio.dart';
 import 'profile/profile_screen.dart';
+import 'widgets/creator_name_widget.dart';
 
 /// Highly stylized Discovery screen inspired by the premium Chai platform.
 class HomeScreen extends ConsumerStatefulWidget {
@@ -627,36 +627,46 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           child: Stack(
             children: [
-              // 1. Background image or dynamic visual gradient
+               // 1. Background image or dynamic visual gradient
               Positioned.fill(
-                child: hasImg
-                    ? Image.asset(
-                        companion.imagePath!,
-                        fit: BoxFit.cover,
-                      )
-                    : Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              companion.themeColor.withOpacity(0.28),
-                              Colors.black,
-                            ],
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            companion.initials,
-                            style: GoogleFonts.playfairDisplay(
-                              color: Colors.white.withOpacity(0.04),
-                              fontSize: 90,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 2.0,
+                child: companion.customImageUrl != null && companion.customImageUrl!.isNotEmpty
+                    ? (companion.customImageUrl!.startsWith('data:image')
+                        ? Image.memory(
+                            base64Decode(companion.customImageUrl!.split(',').last),
+                            fit: BoxFit.cover,
+                          )
+                        : Image.network(
+                            companion.customImageUrl!,
+                            fit: BoxFit.cover,
+                          ))
+                    : (hasImg
+                        ? Image.asset(
+                            companion.imagePath!,
+                            fit: BoxFit.cover,
+                          )
+                        : Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  companion.themeColor.withOpacity(0.28),
+                                  Colors.black,
+                                ],
+                              ),
                             ),
-                          ),
-                        ),
-                      ),
+                            child: Center(
+                              child: Text(
+                                companion.initials,
+                                style: GoogleFonts.playfairDisplay(
+                                  color: Colors.white.withOpacity(0.04),
+                                  fontSize: 90,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 2.0,
+                                ),
+                              ),
+                            ),
+                          )),
               ),
 
               // 2. Mist overlay for Rain Only AIs
@@ -723,14 +733,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                       ),
                       const SizedBox(width: 6),
-                      Text(
-                        companion.creatorId == null ? "Official Companion" : "Custom Companion",
-                        style: GoogleFonts.inter(
-                          color: Colors.white70,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
+                      companion.creatorId == null
+                          ? Text(
+                              "Official Companion",
+                              style: GoogleFonts.inter(
+                                color: Colors.white70,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            )
+                          : CreatorNameWidget(
+                              creatorId: companion.creatorId!,
+                              style: GoogleFonts.inter(
+                                color: Colors.white70,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w500,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
                     ],
                   ),
                 ),

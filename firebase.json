@@ -1,1 +1,51 @@
-{"firestore":{"rules":"firestore.rules"},"flutter":{"platforms":{"android":{"default":{"projectId":"chatrix-c3809","appId":"1:47600970379:android:d8261eb6dea31ca9cb828e","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"chatrix-c3809","configurations":{"android":"1:47600970379:android:d8261eb6dea31ca9cb828e","ios":"1:47600970379:ios:3c9af91e3ed5d04bcb828e","web":"1:47600970379:web:766c326ee2695ebbcb828e"}}}}}}
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "/**",
+        "headers": [
+          {
+            "key": "Strict-Transport-Security",
+            "value": "max-age=31536000; includeSubDomains; preload"
+          }
+        ]
+      }
+    ]
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "chatrix-c3809",
+          "appId": "1:47600970379:android:d8261eb6dea31ca9cb828e",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "chatrix-c3809",
+          "configurations": {
+            "android": "1:47600970379:android:d8261eb6dea31ca9cb828e",
+            "ios": "1:47600970379:ios:3c9af91e3ed5d04bcb828e",
+            "web": "1:47600970379:web:766c326ee2695ebbcb828e"
+          }
+        }
+      }
+    }
+  }
+}

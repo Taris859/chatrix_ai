@@ -1,4 +1,3 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'auth_service.dart';
 import 'auth_provider.dart';
@@ -112,8 +111,8 @@ class OnboardingController extends StateNotifier<OnboardingState> {
         // Google Sign-In
         await _authService.signInWithGoogle();
       } else if (mode == 2) {
-        // Anonymous/Guest Mode
-        await _authService.signInAnonymously();
+        // Guest mode is deactivated
+        throw Exception("Guest access is no longer permitted. Please register or use Google Sign-In.");
       } else {
         // Email/Password mode
         if (email == null || email.trim().isEmpty || password == null || password.trim().isEmpty) {
@@ -122,6 +121,23 @@ class OnboardingController extends StateNotifier<OnboardingState> {
         if (state.isLoginMode) {
           await _authService.signInWithEmail(email.trim(), password);
         } else {
+          // Password complexity check
+          final pass = password;
+          if (pass.length < 8) {
+            throw Exception("Security cipher (password) must be at least 8 characters long.");
+          }
+          if (!RegExp(r'[A-Z]').hasMatch(pass)) {
+            throw Exception("Security cipher must contain at least one uppercase letter.");
+          }
+          if (!RegExp(r'[a-z]').hasMatch(pass)) {
+            throw Exception("Security cipher must contain at least one lowercase letter.");
+          }
+          if (!RegExp(r'[0-9]').hasMatch(pass)) {
+            throw Exception("Security cipher must contain at least one numeric digit.");
+          }
+          if (!RegExp(r'[!@#\$&*~._-]').hasMatch(pass)) {
+            throw Exception("Security cipher must contain at least one special character (e.g., !, @, #, \$, &, *, ~).");
+          }
           await _authService.signUpWithEmail(email.trim(), password);
         }
       }

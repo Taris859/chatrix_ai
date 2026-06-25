@@ -5,6 +5,10 @@ import httpx
 import time
 from collections import defaultdict
 from typing import Optional
+from dotenv import load_dotenv
+
+load_dotenv()  # Load environment variables before other imports
+
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware

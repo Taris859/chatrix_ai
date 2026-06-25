@@ -8,6 +8,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../core/theme.dart';
+import '../memory/memory_service.dart';
+import '../auth/auth_service.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -22,6 +24,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _milestoneNotifications = true;
   bool _ambientSceneNotifications = true;
   bool _isLoading = true;
+  bool _isClearingMemory = false;
 
   @override
   void initState() {
@@ -154,6 +157,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             },
                           ),
                           const SizedBox(height: 36),
+                          _buildSectionTitle("Memory & Privacy"),
+                          const SizedBox(height: 16),
+                          _buildMemoryClearCard(),
+                          const SizedBox(height: 36),
                           _buildFooter(),
                         ],
                       ),
@@ -283,6 +290,212 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
       ),
     ).animate().fadeIn(duration: 600.ms).slideX(begin: 0.05, curve: Curves.easeOutCubic);
+  }
+
+  Widget _buildMemoryClearCard() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: ChatrixTheme.errorRose.withOpacity(0.04),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: ChatrixTheme.errorRose.withOpacity(0.15),
+                width: 1,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: ChatrixTheme.errorRose.withOpacity(0.08),
+                        border: Border.all(color: ChatrixTheme.errorRose.withOpacity(0.15)),
+                      ),
+                      child: const Icon(Icons.memory_outlined, color: ChatrixTheme.errorRose, size: 22),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Clear All AI Memories",
+                            style: GoogleFonts.inter(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14.5,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "Permanently erase everything your companions remember about you.",
+                            style: GoogleFonts.inter(
+                              color: Colors.white.withOpacity(0.45),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.black26,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    "⚠️  This erases all emotional profiles, diary entries, and relationship memories across every companion. Your chat history remains viewable until you delete it separately. This action is permanent and irreversible.",
+                    style: GoogleFonts.inter(
+                      color: Colors.white38,
+                      fontSize: 11.5,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: ChatrixTheme.errorRose.withOpacity(0.12),
+                      foregroundColor: ChatrixTheme.errorRose,
+                      side: const BorderSide(color: ChatrixTheme.errorRose, width: 1),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: _isClearingMemory ? null : _confirmClearAllMemory,
+                    child: _isClearingMemory
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: ChatrixTheme.errorRose),
+                          )
+                        : Text(
+                            "Clear All Memories",
+                            style: GoogleFonts.inter(fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ).animate().fadeIn(duration: 600.ms).slideX(begin: 0.05, curve: Curves.easeOutCubic);
+  }
+
+  Future<void> _confirmClearAllMemory() async {
+    HapticFeedback.heavyImpact();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: AlertDialog(
+          backgroundColor: ChatrixTheme.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: ChatrixTheme.errorRose, size: 24),
+              const SizedBox(width: 10),
+              Text(
+                "Erase All Memories?",
+                style: GoogleFonts.inter(
+                  color: ChatrixTheme.errorRose,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 17,
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Every companion will forget you entirely.",
+                style: GoogleFonts.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "All emotional profiles, personal details, relationship milestones, and diary entries will be permanently deleted. Your companions will greet you as strangers.",
+                style: GoogleFonts.inter(color: Colors.white60, fontSize: 13, height: 1.5),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                "This cannot be undone.",
+                style: GoogleFonts.inter(
+                  color: ChatrixTheme.errorRose,
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text("Keep Memories", style: GoogleFonts.inter(color: Colors.white54, fontWeight: FontWeight.w500)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text("Yes, Erase Everything", style: GoogleFonts.inter(color: ChatrixTheme.errorRose, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirmed == true) {
+      setState(() => _isClearingMemory = true);
+      try {
+        final userId = AuthService().currentUserId;
+        if (userId != null) {
+          await MemoryService().clearAllMemory(userId);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  "All memories erased. Your companions will start fresh.",
+                  style: GoogleFonts.inter(color: Colors.white),
+                ),
+                backgroundColor: ChatrixTheme.surface,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            );
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Failed to clear memories. Try again.", style: GoogleFonts.inter(color: Colors.white)),
+              backgroundColor: ChatrixTheme.errorRose,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isClearingMemory = false);
+      }
+    }
   }
 
   Widget _buildFooter() {

@@ -20,12 +20,53 @@ import '../../memory/memory_service.dart';
 
 // Navigation state provider
 final navigationIndexProvider = StateProvider<int>((ref) => 0);
-
-class LuxuryBottomNav extends ConsumerWidget {
+class LuxuryBottomNav extends ConsumerStatefulWidget {
   const LuxuryBottomNav({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LuxuryBottomNav> createState() => _LuxuryBottomNavState();
+}
+
+class _LuxuryBottomNavState extends ConsumerState<LuxuryBottomNav> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkPendingCompanion();
+    });
+  }
+
+  Future<void> _checkPendingCompanion() async {
+    final prefs = await SharedPreferences.getInstance();
+    final companionId = prefs.getString('pending_companion_id');
+    if (companionId != null && companionId.isNotEmpty) {
+      await prefs.remove('pending_companion_id');
+      try {
+        final companionsList = await ref.read(companionsProvider.future);
+        final companion = companionsList.firstWhere(
+          (c) => c.id == companionId || c.id.toLowerCase() == companionId.toLowerCase(),
+          orElse: () => companionsList.firstWhere(
+            (c) => c.name.toLowerCase().replaceAll(' ', '-') == companionId.toLowerCase().replaceAll(' ', '-'),
+            orElse: () => null as dynamic,
+          ),
+        );
+
+        if (companion != null) {
+          if (mounted) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => ChatScreen(companion: companion)),
+            );
+          }
+        }
+      } catch (e) {
+        print("Error handling pending companion navigation: $e");
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final currentIndex = ref.watch(navigationIndexProvider);
 
     return Scaffold(
@@ -154,7 +195,6 @@ class LuxuryBottomNav extends ConsumerWidget {
     );
   }
 }
-
 // ═══════════════════════════════════════════════
 // CHATS SCREEN — Conversation List
 // ═══════════════════════════════════════════════
@@ -294,15 +334,64 @@ class _ChatsScreenState extends ConsumerState<ChatsScreen> {
           confirmDismiss: (direction) async {
             return await showDialog<bool>(
               context: context,
-              builder: (context) => AlertDialog(
-                backgroundColor: ChatrixTheme.surface,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                title: Text("Delete Conversation", style: GoogleFonts.playfairDisplay(color: ChatrixTheme.errorRose, fontWeight: FontWeight.bold)),
-                content: Text("Are you sure you want to permanently delete your chat with ${companion.name}? This action cannot be undone.", style: GoogleFonts.inter(color: Colors.white70)),
-                actions: [
-                  TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel", style: TextStyle(color: Colors.white54))),
-                  TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Delete", style: TextStyle(color: ChatrixTheme.errorRose, fontWeight: FontWeight.bold))),
-                ],
+              builder: (context) => BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: AlertDialog(
+                  backgroundColor: ChatrixTheme.surface,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                  title: Row(
+                    children: [
+                      const Icon(Icons.delete_sweep_outlined, color: ChatrixTheme.errorRose, size: 22),
+                      const SizedBox(width: 10),
+                      Text(
+                        "Delete Conversation",
+                        style: GoogleFonts.playfairDisplay(color: ChatrixTheme.errorRose, fontWeight: FontWeight.bold, fontSize: 17),
+                      ),
+                    ],
+                  ),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "The chat history with ${companion.name} will be erased from this list.",
+                        style: GoogleFonts.inter(color: Colors.white70, fontSize: 13, height: 1.5),
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: companion.themeColor.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: companion.themeColor.withOpacity(0.2)),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.psychology_outlined, color: companion.themeColor, size: 16),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                "${companion.name} will still remember you. Erase memories from Settings.",
+                                style: GoogleFonts.inter(color: Colors.white, fontSize: 12, height: 1.4),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: Text("Cancel", style: GoogleFonts.inter(color: Colors.white54, fontWeight: FontWeight.w500)),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: Text("Delete Chat", style: GoogleFonts.inter(color: ChatrixTheme.errorRose, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
               ),
             );
           },
@@ -335,36 +424,7 @@ class _ChatsScreenState extends ConsumerState<ChatsScreen> {
         child: Row(
           children: [
             // Avatar
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: hasImg ? null : companion.fallbackGradient,
-                image: hasImg
-                    ? DecorationImage(
-                        image: AssetImage(companion.imagePath!),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
-                border: Border.all(
-                  color: companion.themeColor.withOpacity(0.15),
-                  width: 1.5,
-                ),
-              ),
-              child: hasImg
-                  ? null
-                  : Center(
-                      child: Text(
-                        companion.initials,
-                        style: GoogleFonts.playfairDisplay(
-                          color: Colors.white.withOpacity(0.7),
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-            ),
+            companion.buildAvatar(radius: 26),
 
             const SizedBox(width: 14),
 
@@ -678,36 +738,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
               children: [
                 Expanded(
                   child: Center(
-                    child: Container(
-                      width: 68,
-                      height: 68,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: hasImg ? null : companion.fallbackGradient,
-                        image: hasImg
-                            ? DecorationImage(
-                                image: AssetImage(companion.imagePath!),
-                                fit: BoxFit.cover,
-                              )
-                            : null,
-                        border: Border.all(
-                          color: companion.themeColor.withOpacity(0.2),
-                          width: 1.5,
-                        ),
-                      ),
-                      child: hasImg
-                          ? null
-                          : Center(
-                              child: Text(
-                                companion.initials,
-                                style: GoogleFonts.playfairDisplay(
-                                  color: Colors.white.withOpacity(0.7),
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                    ),
+                    child: companion.buildAvatar(radius: 34),
                   ),
                 ),
                 if (companion.isPremium) ...[
@@ -1250,37 +1281,7 @@ class _MyAIsScreenState extends ConsumerState<MyAIsScreen> {
               children: [
                 Expanded(
                   child: Center(
-                    child: Container(
-                      width: 68,
-                      height: 68,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: hasImg ? null : companion.fallbackGradient,
-                        image: hasImg
-                            ? DecorationImage(
-                                image: AssetImage(companion.imagePath!),
-                                fit: BoxFit.cover,
-                              )
-                            : null,
-                        border: Border.all(
-                          color: companion.themeColor.withOpacity(0.2),
-                          width: 1.5,
-                        ),
-                      ),
-                      child: hasImg
-                          ? null
-                          : Center(
-                              child: Text(
-                                companion.initials,
-                                style: GoogleFonts.playfairDisplay(
-                                  color: Colors.white.withOpacity(0.7),
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1.0,
-                                ),
-                              ),
-                            ),
-                    ),
+                    child: companion.buildAvatar(radius: 34),
                   ),
                 ),
                 const SizedBox(height: 8),

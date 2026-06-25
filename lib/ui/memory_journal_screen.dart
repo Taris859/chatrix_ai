@@ -21,6 +21,7 @@ class _MemoryJournalScreenState extends State<MemoryJournalScreen> with SingleTi
 
   List<Map<String, dynamic>> _memoryDiary = [];
   bool _isLoading = true;
+  bool _isClearingMemory = false;
 
   @override
   void initState() {
@@ -101,37 +102,52 @@ class _MemoryJournalScreenState extends State<MemoryJournalScreen> with SingleTi
 
   Widget _buildHeader(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(24.0),
+      padding: const EdgeInsets.fromLTRB(16, 20, 20, 8),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           IconButton(
             icon: const Icon(Icons.arrow_back_ios, color: Colors.white70, size: 20),
             onPressed: () => Navigator.pop(context),
           ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "SOUL ARCHIVE",
-                style: TextStyle(
-                  color: widget.companion.themeColor,
-                  fontSize: 12,
-                  letterSpacing: 2.5,
-                  fontWeight: FontWeight.bold,
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "SOUL ARCHIVE",
+                  style: TextStyle(
+                    color: widget.companion.themeColor,
+                    fontSize: 12,
+                    letterSpacing: 2.5,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                "${widget.companion.name}'s Journal",
-                style: GoogleFonts.cinzel(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
+                const SizedBox(height: 4),
+                Text(
+                  "${widget.companion.name}'s Journal",
+                  style: GoogleFonts.cinzel(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
+          // Per-companion memory clear button
+          _isClearingMemory
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: ChatrixTheme.errorRose),
+                )
+              : IconButton(
+                  tooltip: "Clear ${widget.companion.name}'s Memory",
+                  icon: const Icon(Icons.delete_forever_outlined, color: Colors.white38, size: 22),
+                  onPressed: _confirmClearThisMemory,
+                ),
         ],
       ),
     );
@@ -179,6 +195,9 @@ class _MemoryJournalScreenState extends State<MemoryJournalScreen> with SingleTi
       itemCount: _memoryDiary.length,
       itemBuilder: (context, index) {
         final entry = _memoryDiary[index];
+        // Support both 'entry' (new) and 'content' (legacy) field names
+        final entryText = entry["entry"] ?? entry["content"] ?? "";
+        final entryThought = entry["thought"] ?? "— PRIVATE REFLECTION —";
         return Container(
           margin: const EdgeInsets.only(bottom: 20),
           decoration: BoxDecoration(
@@ -222,7 +241,7 @@ class _MemoryJournalScreenState extends State<MemoryJournalScreen> with SingleTi
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      entry["thought"] ?? "— PRIVATE REFLECTION —",
+                      entryThought,
                       style: const TextStyle(
                         color: Colors.white24,
                         fontSize: 11,
@@ -232,7 +251,7 @@ class _MemoryJournalScreenState extends State<MemoryJournalScreen> with SingleTi
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      entry["content"] ?? "",
+                      entryText,
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.87),
                         fontSize: 14,
@@ -330,20 +349,114 @@ class _MemoryJournalScreenState extends State<MemoryJournalScreen> with SingleTi
         "title": "Shared Vulnerability",
         "desc": "Exchanged intimate truths and lowered defenses during a midnight rain session.",
         "icon": Icons.favorite_border,
-        "unlocked": true,
+        "unlocked": _memoryDiary.length >= 2,
       },
       {
         "title": "The Oath of Protection",
-        "desc": "Committed to guarding each other\'s peace against the storm outside.",
+        "desc": "Committed to guarding each other's peace against the storm outside.",
         "icon": Icons.shield_outlined,
-        "unlocked": true,
+        "unlocked": _memoryDiary.length >= 5,
       },
       {
         "title": "Eternal Sanctuary",
         "desc": "Achieved absolute relationship trust and fully customized a custom haven.",
         "icon": Icons.nightlight_round_outlined,
-        "unlocked": false,
+        "unlocked": _memoryDiary.length >= 10,
       },
     ];
+  }
+
+  Future<void> _confirmClearThisMemory() async {
+    final userId = AuthService().currentUserId ?? "guest_123";
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: AlertDialog(
+          backgroundColor: ChatrixTheme.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: widget.companion.themeColor, size: 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  "Erase ${widget.companion.name}'s Memory?",
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "${widget.companion.name} will forget everything about you.",
+                style: GoogleFonts.inter(color: Colors.white70, fontSize: 13, height: 1.5),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "All diary entries, your emotional profile, and relationship history with this companion will be permanently erased. Your chat transcript will remain untouched.",
+                style: GoogleFonts.inter(color: Colors.white54, fontSize: 12, height: 1.5),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text("Keep", style: GoogleFonts.inter(color: Colors.white54, fontWeight: FontWeight.w500)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(
+                "Erase Memory",
+                style: GoogleFonts.inter(color: ChatrixTheme.errorRose, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      setState(() => _isClearingMemory = true);
+      try {
+        await MemoryService().clearMemoryForCompanion(userId, widget.companion.name);
+        if (mounted) {
+          setState(() {
+            _memoryDiary = [];
+            _isClearingMemory = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                "${widget.companion.name}'s memory has been cleared.",
+                style: GoogleFonts.inter(color: Colors.white),
+              ),
+              backgroundColor: ChatrixTheme.surface,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isClearingMemory = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Failed to clear memory. Try again.", style: GoogleFonts.inter(color: Colors.white)),
+              backgroundColor: ChatrixTheme.errorRose,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+        }
+      }
+    }
   }
 }

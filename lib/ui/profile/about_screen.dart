@@ -152,28 +152,13 @@ class AboutScreen extends StatelessWidget {
                       _buildSectionHeader("THE FOUNDER STORY"),
                       const SizedBox(height: 12),
                       _buildContentCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Chatrix was founded by Tanu Bhukal, an independent developer passionate about AI, storytelling, and creating immersive digital experiences.",
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                color: ChatrixTheme.textPrimary,
-                                height: 1.6,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              "Chatrix began as an independent passion project built from curiosity, persistence, and a desire to create unique AI experiences. What started as an idea gradually evolved into a live platform through continuous learning, experimentation, and development.",
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                color: ChatrixTheme.textSecondary,
-                                height: 1.6,
-                              ),
-                            ),
-                          ],
+                        child: Text(
+                          "Chatrix was founded by Tanu Bhukal, an independent developer and entrepreneur. She designed, developed, and launched Chatrix as a passion project, combining AI, creativity, and storytelling to create meaningful digital experiences.",
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            color: ChatrixTheme.textPrimary,
+                            height: 1.6,
+                          ),
                         ),
                       ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.05),
                       

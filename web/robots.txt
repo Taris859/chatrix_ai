@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://chatrix.space/sitemap.xml

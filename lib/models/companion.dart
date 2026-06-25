@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 
 /// Gender classification for companion filtering
@@ -17,6 +18,7 @@ class Companion {
   final String? voiceId;
   final String? avatarName;
   final bool isPublic;
+  final String? customImageUrl;
 
   /// Automatically resolves asset image path if one exists
   String? get imagePath {
@@ -69,6 +71,53 @@ class Companion {
     );
   }
 
+  /// Renders either custom image (Base64/Network) or fallback assets/initials
+  Widget buildAvatar({double radius = 24, Color? fallbackColor}) {
+    if (customImageUrl != null && customImageUrl!.isNotEmpty) {
+      if (customImageUrl!.startsWith('data:image')) {
+        try {
+          final String base64Str = customImageUrl!.split(',').last;
+          final bytes = base64.decode(base64Str);
+          return CircleAvatar(
+            radius: radius,
+            backgroundImage: MemoryImage(bytes),
+            backgroundColor: Colors.grey[900],
+          );
+        } catch (e) {
+          print("Error parsing base64 avatar: $e");
+        }
+      } else if (customImageUrl!.startsWith('http')) {
+        return CircleAvatar(
+          radius: radius,
+          backgroundImage: NetworkImage(customImageUrl!),
+          backgroundColor: Colors.grey[900],
+        );
+      }
+    }
+    
+    final path = imagePath;
+    if (path != null) {
+      return CircleAvatar(
+        radius: radius,
+        backgroundImage: AssetImage(path),
+        backgroundColor: Colors.grey[900],
+      );
+    }
+    
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: (fallbackColor ?? themeColor).withOpacity(0.2),
+      child: Text(
+        initials, 
+        style: TextStyle(
+          color: fallbackColor ?? themeColor, 
+          fontWeight: FontWeight.bold, 
+          fontSize: radius * 0.7
+        )
+      ),
+    );
+  }
+
   Companion({
     required this.id,
     required this.name,
@@ -83,6 +132,7 @@ class Companion {
     this.voiceId,
     this.avatarName,
     this.isPublic = true,
+    this.customImageUrl,
   });
 
   factory Companion.fromFirestore(Map<String, dynamic> data, String id, {Companion? fallback}) {
@@ -136,6 +186,7 @@ class Companion {
       voiceId: data['voice_id'] ?? data['voiceId'] ?? fallback?.voiceId,
       avatarName: data['avatar_name'] ?? data['avatarName'] ?? data['image_name'] ?? fallback?.avatarName,
       isPublic: data['is_public'] ?? data['isPublic'] ?? fallback?.isPublic ?? true,
+      customImageUrl: data['custom_image_url'] ?? data['customImageUrl'] ?? fallback?.customImageUrl,
     );
   }
 }

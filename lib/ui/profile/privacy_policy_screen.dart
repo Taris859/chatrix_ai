@@ -77,9 +77,9 @@ class PrivacyPolicyScreen extends StatelessWidget {
                       ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.05),
                       
                       _buildPolicyCard(
-                        icon: Icons.chat_bubble_outline_rounded,
-                        title: "Chat History & Logs",
-                        description: "Your conversation history with AI companions is stored securely to allow seamless continuous conversations. You can choose to encrypt or clear these logs at your discretion.",
+                        icon: Icons.vpn_key_rounded,
+                        title: "Zero-Knowledge Encryption",
+                        description: "All messages, memory summaries, and diary entries are encrypted client-side using AES-256 before being written to Cloud Firestore. Not even the application owner or database administrator can read your chats.\n• Email & Password users: Your encryption key is derived dynamically from your password (kept strictly in-memory and never sent to our servers).\n• Google Sign-In users: A secure key is generated and stored locally in your device's sandbox.",
                       ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.05),
                       
                       _buildPolicyCard(

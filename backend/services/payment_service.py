@@ -96,32 +96,50 @@ class PaymentService:
 
         PAYPAL_CLIENT_ID = os.environ.get("PAYPAL_CLIENT_ID", "")
         PAYPAL_CLIENT_SECRET = os.environ.get("PAYPAL_CLIENT_SECRET", "")
-        PAYPAL_API_BASE = "https://api-m.paypal.com"  # Production API base URL
 
         if not PAYPAL_CLIENT_ID or not PAYPAL_CLIENT_SECRET:
             print("PayPal credentials are not set in environment variables.")
             return {"verified": False, "reason": "Credentials not configured"}
 
-        async def get_paypal_access_token() -> str:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    f"{PAYPAL_API_BASE}/v1/oauth2/token",
-                    auth=(PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET),
-                    data={"grant_type": "client_credentials"},
-                )
-                response.raise_for_status()
-                return response.json()["access_token"]
+        # Dynamic detection of Sandbox vs Production credentials
+        async def get_paypal_access_token() -> tuple[str, str]:
+            # Try production endpoint first
+            try:
+                async with httpx.AsyncClient() as client:
+                    response = await client.post(
+                        "https://api-m.paypal.com/v1/oauth2/token",
+                        auth=(PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET),
+                        data={"grant_type": "client_credentials"},
+                    )
+                    if response.status_code == 200:
+                        return response.json()["access_token"], "https://api-m.paypal.com"
+            except Exception as e:
+                print(f"PayPal Production OAuth attempt failed: {e}")
+
+            # Fall back to sandbox endpoint
+            try:
+                async with httpx.AsyncClient() as client:
+                    response = await client.post(
+                        "https://api-m.sandbox.paypal.com/v1/oauth2/token",
+                        auth=(PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET),
+                        data={"grant_type": "client_credentials"},
+                    )
+                    response.raise_for_status()
+                    return response.json()["access_token"], "https://api-m.sandbox.paypal.com"
+            except Exception as e:
+                print(f"PayPal Sandbox OAuth attempt failed: {e}")
+                raise e
 
         try:
-            access_token = await get_paypal_access_token()
+            access_token, paypal_api_base = await get_paypal_access_token()
             async with httpx.AsyncClient() as client:
                 response = await client.get(
-                    f"{PAYPAL_API_BASE}/v1/reporting/transactions",
+                    f"{paypal_api_base}/v1/reporting/transactions",
                     headers={"Authorization": f"Bearer {access_token}"},
                     params={
                         "transaction_id": transaction_id,
                         "fields": "all",
-                        "start_date": (datetime.utcnow() - timedelta(days=60)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                        "start_date": (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%SZ"),
                         "end_date": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
                     },
                 )

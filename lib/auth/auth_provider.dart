@@ -18,3 +18,10 @@ final premiumStatusProvider = FutureProvider<bool>((ref) async {
   ref.watch(authStateProvider);
   return ref.read(authServiceProvider).isPremium();
 });
+
+/// Checks if the current email/password user has completed OTP verification.
+/// Always true for Google sign-ins and anonymous users.
+final otpVerifiedProvider = FutureProvider<bool>((ref) async {
+  ref.watch(authStateProvider);
+  return ref.read(authServiceProvider).isOtpVerified();
+});

@@ -114,4 +114,38 @@ class RazorpayService {
     }
     return null;
   }
+
+  /// Verify a PayPal payment transaction ID on our FastAPI backend.
+  /// Returns true ONLY if the backend confirms the transaction is valid and
+  /// matches the expected amount for the selected plan.
+  Future<bool> verifyPaypalPayment({
+    required String userId,
+    required String transactionId,
+    required String planId,
+    required double amountUSD,
+    String? email,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AppConstants.backendBaseUrl}/verify_paypal'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'user_id': userId,
+          'transaction_id': transactionId.trim(),
+          'plan_id': planId,
+          'amount_usd': amountUSD,
+          if (email != null) 'email': email,
+        }),
+      ).timeout(const Duration(seconds: 20));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['verified'] == true;
+      } else {
+        print("PayPal verification error: ${response.statusCode} - ${response.body}");
+      }
+    } catch (e) {
+      print("PayPal verification exception: $e");
+    }
+    return false;
+  }
 }

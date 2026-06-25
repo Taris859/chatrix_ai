@@ -11,6 +11,7 @@ import '../../models/scene.dart';
 import '../../scenes/particle_background.dart';
 import '../../auth/auth_service.dart';
 import '../premium/subscription_screen.dart';
+import 'package:image_picker/image_picker.dart';
 
 class AICreationStudio extends StatefulWidget {
   const AICreationStudio({Key? key}) : super(key: key);
@@ -22,7 +23,6 @@ class AICreationStudio extends StatefulWidget {
 class _AICreationStudioState extends State<AICreationStudio> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
-  bool _isPremiumUser = false;
 
   // Controllers
   final TextEditingController _nameController = TextEditingController();
@@ -45,6 +45,7 @@ class _AICreationStudioState extends State<AICreationStudio> {
   Color _selectedThemeColor = const Color(0xFF00FFCC); // Bioluminescence default
   String _themeColorHex = "#00FFCC";
   String _selectedAvatar = "Aria";
+  String? _customImageBase64;
 
   String _selectedGender = "Female";
   String _selectedVoiceId = "EXAVITQu4vr4xnSDxMaL"; // Default Sarah (Premium Female Voice)
@@ -117,9 +118,6 @@ class _AICreationStudioState extends State<AICreationStudio> {
   Future<void> _checkPremiumEntitlement() async {
     final isPremium = await AuthService().isPremium();
     if (mounted) {
-      setState(() {
-        _isPremiumUser = isPremium;
-      });
       if (!isPremium) {
         _showPremiumGateOverlay();
       }
@@ -246,6 +244,29 @@ class _AICreationStudioState extends State<AICreationStudio> {
     });
   }
 
+  Future<void> _pickCustomImage() async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 75,
+      );
+      if (pickedFile != null) {
+        final bytes = await pickedFile.readAsBytes();
+        setState(() {
+          _customImageBase64 = 'data:image/png;base64,${base64Encode(bytes)}';
+        });
+      }
+    } catch (e) {
+      print("Error picking custom image: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error picking image: $e"), backgroundColor: Colors.redAccent),
+      );
+    }
+  }
+
   Future<void> _saveCompanion() async {
     if (!_formKey.currentState!.validate()) return;
     
@@ -271,9 +292,10 @@ class _AICreationStudioState extends State<AICreationStudio> {
         'emotional_warmth': _emotionalWarmth,
         'danger_level': _dangerLevel,
         'conversation_energy': _conversationEnergy,
-        'avatar_name': _selectedAvatar,
+        'avatar_name': _customImageBase64 != null ? "Custom" : _selectedAvatar,
         'gender': _selectedGender.toLowerCase(),
         'voice_id': _selectedVoiceId,
+        'custom_image_url': _customImageBase64,
       };
 
       // 1. Dynamic write to Cloud Firestore
@@ -681,16 +703,71 @@ class _AICreationStudioState extends State<AICreationStudio> {
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
-        itemCount: _avatars.length,
+        itemCount: _avatars.length + 1,
         itemBuilder: (context, index) {
-          final avatar = _avatars[index];
-          final isSelected = _selectedAvatar == avatar;
+          if (index == 0) {
+            final isCustomSelected = _customImageBase64 != null;
+            return GestureDetector(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                _pickCustomImage();
+              },
+              child: Container(
+                margin: const EdgeInsets.only(right: 16),
+                child: Column(
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isCustomSelected ? _selectedThemeColor : Colors.white10,
+                          width: isCustomSelected ? 3 : 1.5,
+                        ),
+                        boxShadow: isCustomSelected ? [
+                          BoxShadow(
+                            color: _selectedThemeColor.withOpacity(0.35),
+                            blurRadius: 10,
+                            spreadRadius: 1,
+                          )
+                        ] : [],
+                      ),
+                      child: CircleAvatar(
+                        radius: 32,
+                        backgroundColor: Colors.grey[900],
+                        backgroundImage: _customImageBase64 != null
+                            ? MemoryImage(base64Decode(_customImageBase64!.split(',').last))
+                            : null,
+                        child: _customImageBase64 == null
+                            ? const Icon(Icons.add_a_photo_outlined, color: Colors.white60, size: 24)
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      "Upload Photo",
+                      style: GoogleFonts.inter(
+                        color: isCustomSelected ? Colors.white : Colors.white38,
+                        fontSize: 10,
+                        fontWeight: isCustomSelected ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          final avatar = _avatars[index - 1];
+          final isSelected = _selectedAvatar == avatar && _customImageBase64 == null;
           
           return GestureDetector(
             onTap: () {
               HapticFeedback.selectionClick();
               setState(() {
                 _selectedAvatar = avatar;
+                _customImageBase64 = null; // clear custom image if preset is selected
               });
             },
             child: Container(

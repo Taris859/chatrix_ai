@@ -272,7 +272,9 @@ class VoiceService {
       try {
         dynamic voices = await _flutterTts.getVoices;
         if (voices is List) {
-          bool voiceFound = false;
+          Map? selectedVoice;
+          
+          // Step 1: Explicit matching by gender-specific keywords
           for (var item in voices) {
             if (item is Map) {
               final String name = (item['name'] ?? '').toString().toLowerCase();
@@ -293,6 +295,12 @@ class VoiceService {
                                      name.contains('bella') ||
                                      name.contains('sarah') ||
                                      name.contains('siri') ||
+                                     name.contains('karen') ||
+                                     name.contains('moira') ||
+                                     name.contains('tessa') ||
+                                     name.contains('veena') ||
+                                     name.contains('susan') ||
+                                     name.contains('helena') ||
                                      name.contains('cortana');
 
                 bool isVoiceMale = name.contains('male') || 
@@ -310,39 +318,94 @@ class VoiceService {
                                    name.contains('liam') ||
                                    name.contains('brian') ||
                                    name.contains('daniel') ||
-                                   name.contains('roger');
+                                   name.contains('roger') ||
+                                   name.contains('alan') ||
+                                   name.contains('steve');
 
-                if (isFemale && isVoiceFemale && !name.contains('male')) {
-                  await _flutterTts.setVoice({
-                    "name": (item['name'] ?? '').toString(),
-                    "locale": (item['locale'] ?? '').toString(),
-                  });
-                  voiceFound = true;
+                if (isFemale && isVoiceFemale && !isVoiceMale) {
+                  selectedVoice = item;
                   break;
-                } else if (!isFemale && isVoiceMale) {
-                  await _flutterTts.setVoice({
-                    "name": (item['name'] ?? '').toString(),
-                    "locale": (item['locale'] ?? '').toString(),
-                  });
-                  voiceFound = true;
+                } else if (!isFemale && isVoiceMale && !isVoiceFemale) {
+                  selectedVoice = item;
                   break;
                 }
               }
             }
           }
 
-          if (!voiceFound) {
-            // Modulate pitch if no explicit gendered voice found
-            await _flutterTts.setPitch(isFemale ? 1.15 : 0.85);
+          // Step 2: Fallback - if no explicit matching voice was found, look for any English voice
+          // that does NOT contain the OPPOSITE gender's keywords. This prevents a previous character's
+          // voice (of the opposite gender) from persisting in the TTS engine.
+          if (selectedVoice == null) {
+            for (var item in voices) {
+              if (item is Map) {
+                final String name = (item['name'] ?? '').toString().toLowerCase();
+                final String locale = (item['locale'] ?? '').toString().toLowerCase();
+
+                if (locale.startsWith('en-')) {
+                  if (isFemale) {
+                    bool isVoiceMale = name.contains('male') || 
+                                       name.contains('david') || 
+                                       name.contains('george') || 
+                                       name.contains('daniel') || 
+                                       name.contains('mark') || 
+                                       name.contains('brian') || 
+                                       name.contains('liam') ||
+                                       name.contains('steve') ||
+                                       name.contains('alan');
+                    if (!isVoiceMale) {
+                      selectedVoice = item;
+                      break;
+                    }
+                  } else {
+                    bool isVoiceFemale = name.contains('female') || 
+                                         name.contains('zira') || 
+                                         name.contains('samantha') || 
+                                         name.contains('hazel') || 
+                                         name.contains('siri') || 
+                                         name.contains('cortana') ||
+                                         name.contains('bella') ||
+                                         name.contains('sarah') ||
+                                         name.contains('alice');
+                    if (!isVoiceFemale) {
+                      selectedVoice = item;
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          // Step 3: Fallback - just pick the first English voice if still null
+          if (selectedVoice == null) {
+            for (var item in voices) {
+              if (item is Map) {
+                final String locale = (item['locale'] ?? '').toString().toLowerCase();
+                if (locale.startsWith('en-')) {
+                  selectedVoice = item;
+                  break;
+                }
+              }
+            }
+          }
+
+          // Always set the selected voice configuration explicitly if available
+          if (selectedVoice != null) {
+            await _flutterTts.setVoice({
+              "name": (selectedVoice['name'] ?? '').toString(),
+              "locale": (selectedVoice['locale'] ?? '').toString(),
+            });
+            await _flutterTts.setPitch(isFemale ? 1.2 : 0.8);
           } else {
-            await _flutterTts.setPitch(1.0);
+            await _flutterTts.setPitch(isFemale ? 1.2 : 0.8);
           }
         } else {
-          await _flutterTts.setPitch(isFemale ? 1.15 : 0.85);
+          await _flutterTts.setPitch(isFemale ? 1.2 : 0.8);
         }
       } catch (voiceError) {
         print("Error selecting gender voice: $voiceError");
-        await _flutterTts.setPitch(isFemale ? 1.15 : 0.85);
+        await _flutterTts.setPitch(isFemale ? 1.2 : 0.8);
       }
 
       isPlaying = true;

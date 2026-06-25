@@ -52,6 +52,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '47600970379',
     projectId: 'chatrix-c3809',
     storageBucket: 'chatrix-c3809.firebasestorage.app',
+    androidClientId: '47600970379-rjs51bu94e287q0qggrrp3tr2sr0paol.apps.googleusercontent.com',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(

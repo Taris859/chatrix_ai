@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'emotional_space.dart';
-import '../models/companion.dart';
 import 'spaces/quiet_chess.dart';
 import 'spaces/music_room.dart';
 import 'spaces/sketchbook.dart';

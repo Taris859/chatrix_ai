@@ -1,12 +1,18 @@
+import 'dart:convert';
+import 'dart:math';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import '../services/notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 class AuthService {
+  static String? _userPassword;
+  static String? get userPassword => _userPassword;
+
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn(
@@ -155,13 +161,13 @@ class AuthService {
     }
   }
 
-  /// Sign up with Email and Password
   Future<UserCredential?> signUpWithEmail(String email, String password) async {
     try {
       final userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
+      _userPassword = password; // Cache password in-memory for encryption key
       await _createUserRecordIfNew(userCredential.user);
       
       // Sync player ID asynchronously
@@ -177,13 +183,13 @@ class AuthService {
     }
   }
 
-  /// Sign in with Email and Password
   Future<UserCredential?> signInWithEmail(String email, String password) async {
     try {
       final userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
+      _userPassword = password; // Cache password in-memory for encryption key
       
       // Sync player ID asynchronously for existing user
       NotificationService().syncPlayerIdToFirestore();
@@ -217,6 +223,75 @@ class AuthService {
     }
   }
 
+  /// Helper to generate a unique referral code
+  String _generateReferralCode() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    final rand = Random.secure();
+    return List.generate(6, (index) => chars[rand.nextInt(chars.length)]).join();
+  }
+
+  /// Credits referral rewards to the inviter
+  Future<void> _creditReferralReward(String referralCode, String referredUid) async {
+    try {
+      final cleanCode = referralCode.trim().toUpperCase();
+      final querySnapshot = await _firestore
+          .collection('users')
+          .where('referral_code', isEqualTo: cleanCode)
+          .limit(1)
+          .get();
+
+      if (querySnapshot.docs.isEmpty) {
+        print("Referral credit: Inviter with code $cleanCode not found.");
+        return;
+      }
+
+      final inviterDoc = querySnapshot.docs.first;
+      final inviterData = inviterDoc.data();
+      final inviterUid = inviterDoc.id;
+
+      // Prevent self-referral
+      if (inviterUid == referredUid) {
+        print("Referral credit: Prevented self-referral.");
+        return;
+      }
+
+      final referredUsers = List<String>.from(inviterData['referred_users'] ?? []);
+      
+      if (referredUsers.contains(referredUid)) {
+        print("Referral credit: User $referredUid already referred by $inviterUid.");
+        return;
+      }
+
+      referredUsers.add(referredUid);
+      final newReferralCount = referredUsers.length;
+
+      // Calculate premium expiry
+      DateTime baseDate = DateTime.now();
+      final currentExpiryStr = inviterData['premium_expiry'] as String?;
+      if (currentExpiryStr != null) {
+        final currentExpiry = DateTime.tryParse(currentExpiryStr);
+        if (currentExpiry != null && currentExpiry.isAfter(DateTime.now())) {
+          baseDate = currentExpiry;
+        }
+      }
+
+      // Reward: 3rd referral = +30 days, others = +7 days
+      final daysToAdd = (newReferralCount == 3) ? 30 : 7;
+      final newExpiry = baseDate.add(Duration(days: daysToAdd));
+
+      await _firestore.collection('users').doc(inviterUid).set({
+        'referred_users': referredUsers,
+        'referral_count': newReferralCount,
+        'premium_status': true,
+        'premium_expiry': newExpiry.toIso8601String(),
+      }, SetOptions(merge: true));
+
+      print("Referral credit: Success! Inviter $inviterUid rewarded with $daysToAdd days premium. New count: $newReferralCount.");
+    } catch (e) {
+      print("Error crediting referral reward: $e");
+    }
+  }
+
   /// Create a sleek and robust record in Firestore for new users
   Future<void> _createUserRecordIfNew(User? user) async {
     if (user == null) return;
@@ -232,6 +307,28 @@ class AuthService {
           defaultName = user.email!.split('@')[0];
         }
 
+        final isGoogle = user.providerData.any((info) => info.providerId == 'google.com');
+        final isAnonymous = user.isAnonymous;
+        final isGoogleOrAnonymous = isAnonymous || isGoogle;
+
+        final myReferralCode = _generateReferralCode();
+
+        // Read cached pending referral code
+        final prefs = await SharedPreferences.getInstance();
+        final pendingRef = prefs.getString('pending_referral_code');
+
+        String? referredBy;
+        bool referralCredited = false;
+
+        // Only credit immediately if it's a Google sign in (which is verified right away)
+        // Anonymous accounts are NOT eligible for referral credits or being referred.
+        if (pendingRef != null && pendingRef.isNotEmpty && !isAnonymous) {
+          referredBy = pendingRef;
+          if (isGoogle) {
+            referralCredited = true;
+          }
+        }
+
         await docRef.set({
           'uid': user.uid,
           'userId': user.uid,
@@ -244,16 +341,172 @@ class AuthService {
           'daily_messages': 0,
           'theme': 'dark',
           'is_anonymous': user.isAnonymous,
-          'emotional_preferences': {}
+          'email_otp_verified': isGoogleOrAnonymous,
+          'emotional_preferences': {},
+          'referral_code': myReferralCode,
+          'referral_count': 0,
+          'referred_users': [],
+          'referred_by': referredBy,
+          'referral_credited': referralCredited,
         });
+
+        // Credit immediately for Google
+        if (isGoogle && referredBy != null) {
+          await _creditReferralReward(referredBy, user.uid);
+          await prefs.remove('pending_referral_code');
+        }
       }
     } catch (e) {
       print("Error creating user Firestore record: $e");
     }
   }
 
+  // ─── OTP Email Verification ───────────────────────────────────────────────
+
+  /// Generates a 6-digit OTP, stores it in Firestore with 10-min expiry,
+  /// and sends it to the user's email via EmailJS.
+  Future<void> generateAndSendOtp(String email) async {
+    final code = (100000 + Random.secure().nextInt(900000)).toString();
+    final expiry = DateTime.now().add(const Duration(minutes: 10));
+
+    // Store OTP in Firestore keyed by email (lowercase)
+    await _firestore
+        .collection('email_otps')
+        .doc(email.toLowerCase().trim())
+        .set({
+      'code': code,
+      'expiry': expiry.toIso8601String(),
+      'created_at': FieldValue.serverTimestamp(),
+    });
+
+    // Send email via EmailJS REST API
+    // Replace these with your actual EmailJS credentials:
+    const serviceId = 'YOUR_EMAILJS_SERVICE_ID';
+    const templateId = 'YOUR_EMAILJS_TEMPLATE_ID';
+    const userId = 'YOUR_EMAILJS_PUBLIC_KEY';
+
+    final response = await http.post(
+      Uri.parse('https://api.emailjs.com/api/v1.0/email/send'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'service_id': serviceId,
+        'template_id': templateId,
+        'user_id': userId,
+        'template_params': {
+          'to_email': email,
+          'otp_code': code,
+          'app_name': 'Chatrix AI',
+        },
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to send verification email. Please try again.');
+    }
+  }
+
+  /// Verifies a user-entered OTP against the Firestore record.
+  /// Returns true if valid, throws an [Exception] with reason if not.
+  Future<bool> verifyOtp(String email, String enteredCode) async {
+    final doc = await _firestore
+        .collection('email_otps')
+        .doc(email.toLowerCase().trim())
+        .get();
+
+    if (!doc.exists) {
+      throw Exception('No verification code found. Please request a new one.');
+    }
+
+    final data = doc.data()!;
+    final storedCode = data['code'] as String? ?? '';
+    final expiryStr = data['expiry'] as String? ?? '';
+    final expiry = DateTime.tryParse(expiryStr);
+
+    if (expiry == null || DateTime.now().isAfter(expiry)) {
+      throw Exception('Verification code has expired. Please request a new one.');
+    }
+
+    if (enteredCode.trim() != storedCode) {
+      throw Exception('Incorrect code. Please check your email and try again.');
+    }
+
+    // Code is valid — delete it so it cannot be reused
+    await _firestore
+        .collection('email_otps')
+        .doc(email.toLowerCase().trim())
+        .delete();
+
+    // Mark the Firebase Auth user as email-verified via a custom claim workaround:
+    // We store a verified flag in Firestore on the user's document instead,
+    // since we cannot call Admin SDK from client.
+    final user = _auth.currentUser;
+    if (user != null) {
+      await _firestore.collection('users').doc(user.uid).set(
+        {'email_otp_verified': true},
+        SetOptions(merge: true),
+      );
+
+      // Now that they verified, check if they were referred by someone and credit them!
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
+      if (userDoc.exists) {
+        final userData = userDoc.data() ?? {};
+        final referredBy = userData['referred_by'] as String?;
+        final referralCredited = userData['referral_credited'] as bool? ?? false;
+
+        if (referredBy != null && referredBy.isNotEmpty && !referralCredited) {
+          await _creditReferralReward(referredBy, user.uid);
+          await _firestore.collection('users').doc(user.uid).set(
+            {'referral_credited': true},
+            SetOptions(merge: true),
+          );
+
+          // Clear local cache
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove('pending_referral_code');
+        }
+      }
+    }
+
+    return true;
+  }
+
+  /// Checks whether the current user has been OTP-verified in Firestore.
+  Future<bool> isOtpVerified() async {
+    final user = _auth.currentUser;
+    if (user == null) return false;
+    if (user.isAnonymous) return true;
+
+    // Google Sign-In users are automatically verified
+    final isGoogle = user.providerData.any((info) => info.providerId == 'google.com');
+    if (isGoogle) return true;
+
+    try {
+      final doc = await _firestore.collection('users').doc(user.uid).get();
+      if (doc.exists) {
+        return doc.data()?['email_otp_verified'] ?? false;
+      }
+    } catch (e) {
+      print("Error checking OTP status: $e");
+    }
+    return false;
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+
+  /// Send a password-reset email to the given address
+  Future<void> resetPassword(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email.trim());
+    } on FirebaseAuthException catch (e) {
+      throw _parseAuthException(e);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   /// Sign out all active auth sessions
   Future<void> signOut() async {
+    _userPassword = null; // Clear cached password
     try {
       await _googleSignIn.signOut();
     } catch (e) {

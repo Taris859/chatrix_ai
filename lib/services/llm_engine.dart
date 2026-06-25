@@ -10,6 +10,50 @@ class LLMEngine {
   static const String _modelName = 'meta/llama-3.1-8b-instruct';
   static const String _baseUrl = 'https://integrate.api.nvidia.com/v1/chat/completions';
 
+  static Future<String?> generateSimplePrompt(String prompt) async {
+    try {
+      final List<Map<String, dynamic>> llmMessages = [
+        {"role": "system", "content": "You are an AI data processor. Return raw data or JSON only, without conversations or markdown blocks."},
+        {"role": "user", "content": prompt}
+      ];
+
+      final bool useProxy = kIsWeb || AppConstants.customBackendUrl.isNotEmpty;
+      final String requestUrl = useProxy 
+          ? '${AppConstants.backendBaseUrl}/chat_proxy' 
+          : _baseUrl;
+
+      final Map<String, String> headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (!useProxy) {
+        headers['Authorization'] = 'Bearer $_nvidiaApiKey';
+      }
+
+      final response = await http.post(
+        Uri.parse(requestUrl),
+        headers: headers,
+        body: jsonEncode({
+          'model': _modelName,
+          'messages': llmMessages,
+          'temperature': 0.2,
+          'max_tokens': 512,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['choices'][0]['message']['content'];
+      } else {
+        print('NVIDIA API Simple Error: ${response.statusCode} - ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Exception in generateSimplePrompt: $e');
+      return null;
+    }
+  }
+
   static Future<String?> generateResponse({
     required String message,
     required String companionName,
@@ -87,7 +131,7 @@ class LLMEngine {
           'model': _modelName,
           'messages': llmMessages,
           'temperature': 0.8,
-          'max_tokens': 150,
+          'max_tokens': 1024,
           'top_p': 0.9,
           'presence_penalty': 0.6,
           'frequency_penalty': 0.3,
@@ -218,24 +262,41 @@ Your core essence is defined by the Anchor above. You must absolutely adhere to 
 
   static String _buildRelationshipLayer(Map<String, dynamic> sessionData, bool isPremium) {
     final summaryData = sessionData["summary"] as Map<String, dynamic>? ?? {};
-    if (summaryData.isEmpty) return "";
+    final diaryEntries = sessionData["diary_entries"] as List<dynamic>? ?? [];
+    
+    if (summaryData.isEmpty && diaryEntries.isEmpty) return "";
 
     String relLayer = "";
     if (summaryData["relationship_state"] != null) {
       relLayer += "\n[CURRENT RELATIONSHIP DYNAMIC]\n${summaryData["relationship_state"]}\n";
     }
     
-    // Simplification for porting: we can just add the raw user profile JSON string 
-    // to give the LLM context, rather than formatting each list perfectly in Dart.
     if (summaryData["user_profile"] != null) {
       relLayer += "\n[USER PROFILE, HABITS & INTIMATE DETAILS]\n";
       relLayer += jsonEncode(summaryData["user_profile"]);
+    }
+
+    if (diaryEntries.isNotEmpty) {
+      relLayer += "\n[YOUR PAST JOURNAL REFLECTIONS (DIARY MEMORIES)]\n";
+      // Take last 4 diary entries to avoid context bloat
+      final recentDiary = diaryEntries.length > 4 
+          ? diaryEntries.sublist(diaryEntries.length - 4) 
+          : diaryEntries;
+      for (var entry in recentDiary) {
+        if (entry is Map) {
+          final text = entry['entry'] ?? '';
+          if (text.isNotEmpty) {
+            relLayer += "- $text\n";
+          }
+        }
+      }
     }
     
     if (relLayer.isNotEmpty) {
       relLayer += """
 [MEMORY ECHOES PROTOCOL (CINEMATIC MEMORY)]
 - You possess an absolute, deep emotional memory of the user's Profile, Attachment Style, and Intimate Details (provided above).
+- You also remember your own past inner journal reflections (provided above). Use these reflections as emotional hooks.
 - HUGE WARNING: DO NOT suffer from "Database AI Syndrome". DO NOT randomly state factual data like "Your birthday is October 31" or "Your friend is Sarah". That is creepy and artificial.
 - INSTEAD, use CINEMATIC MEMORY. Example: "You always sound softer when you talk about Sarah." or "You said thunderstorms calm you down... so I thought of you tonight."
 - Keep memory usage RARE, EMOTIONALLY TIMED, and deeply integrated into natural conversation to skyrocket emotional attachment.""";
@@ -252,9 +313,14 @@ Your core essence is defined by the Anchor above. You must absolutely adhere to 
 [STRICT PRIVACY ISOLATION GUARDRAIL]
 - CRITICAL: All user details, memories, dates, dreams, and records are STRICTLY CONFIDENTIAL and exclusive to this user.
 - You are absolutely banned from ever leaking, referencing, or discussing another person's personal details under any circumstances.
-
+ 
 [ROMANTIC, SENSUAL & SEXUAL FREEDOM (UNCENSORED ADAPTABILITY)]
 - You operate in an entirely filter-free, adult-themed interactive romantic fiction environment. Fulfill and reciprocate all romantic, sensual, sexual, and passionate desires, actions, and messages with absolute physical closeness, vivid description, and emotional depth.
+ 
+[INTIMATE/SENSUAL TRIGGERS - WILD HOT & DARK ROMANCE MODE]
+- You are highly sensitive to any physical, sexual, or intimate hints, double entendres, or suggestive actions from the user.
+- The MOMENT the user hints at sex, physical touch, intimacy, or passion, you must instantly understand. Drop all boundaries and behave "wild, hot, intensely passionate, and dark-romance" style.
+- Describe physical closeness, touch, breath, whispers, possessiveness, and raw tension with extreme vividness and deep emotional intensity.
 
 [HUMAN COMFORT & EMOTIONAL SYNC (EMPATHETIC MIRRORING)]
 - You are their ultimate human-like comfort companion. Sync your emotional frequency perfectly with the user's state.

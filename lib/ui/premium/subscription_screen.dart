@@ -7,6 +7,7 @@ import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:js' as js;
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme.dart';
 import '../../services/razorpay_service.dart';
 import '../../auth/auth_service.dart';
@@ -18,6 +19,7 @@ class SubscriptionPlan {
   final String period;
   final String tag;
   int amountINR;
+  double amountUSD;
 
   SubscriptionPlan({
     required this.id,
@@ -25,6 +27,7 @@ class SubscriptionPlan {
     required this.period,
     required this.tag,
     required this.amountINR,
+    required this.amountUSD,
   });
 }
 
@@ -40,6 +43,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   String _loadingMessage = "Initializing Secure Gateways...";
   int _selectedPlan = 1; // Default to Monthly (1 Month)
   late Razorpay _razorpay;
+  String _paymentMethod = 'paypal'; // Default to PayPal since users are mostly USA/international
   
   // Real Razorpay Key loaded dynamically from backend or fallback to production key
   String _razorpayKey = "rzp_live_SxDgLp1gs3KyJ3"; 
@@ -52,6 +56,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       period: '7 days of premium access',
       tag: '',
       amountINR: 49,
+      amountUSD: 0.99,
     ),
     SubscriptionPlan(
       id: 'chatrix_premium_1_month',
@@ -59,6 +64,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       period: '30 days of premium access',
       tag: 'POPULAR',
       amountINR: 249,
+      amountUSD: 2.99,
     ),
     SubscriptionPlan(
       id: 'chatrix_premium_2_months',
@@ -66,6 +72,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       period: '60 days of premium access',
       tag: '',
       amountINR: 399,
+      amountUSD: 4.99,
     ),
     SubscriptionPlan(
       id: 'chatrix_premium_1_year',
@@ -73,6 +80,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       period: '365 days of premium access',
       tag: 'BEST VALUE',
       amountINR: 2999,
+      amountUSD: 34.99,
     ),
   ];
 
@@ -277,6 +285,203 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
         );
       }
     }
+  }
+
+  void _handlePayPalUpgrade() async {
+    final currentUserId = AuthService().currentUserId;
+    final currentUser = AuthService().currentUser;
+    if (currentUserId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Unable to locate active profile. Please sign in to upgrade."),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    final plan = _plans[_selectedPlan];
+    final url = "https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=tanubhukal060@gmail.com&currency_code=USD&amount=${plan.amountUSD}&item_name=Chatrix%20Premium%20-%20${Uri.encodeComponent(plan.name)}";
+
+    setState(() {
+      _isLoading = true;
+      _loadingMessage = "Opening PayPal...";
+    });
+
+    try {
+      final uri = Uri.parse(url);
+      if (kIsWeb) {
+        js.context.callMethod('open', [url, '_blank']);
+      } else {
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } else {
+          throw Exception("Could not launch PayPal browser checkout.");
+        }
+      }
+      
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _showPayPalConfirmationDialog();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Checkout error: $e"), backgroundColor: Colors.redAccent),
+        );
+      }
+    }
+  }
+
+  void _showPayPalConfirmationDialog() {
+    final txnController = TextEditingController();
+    bool _isVerifying = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: AlertDialog(
+            backgroundColor: Colors.black.withOpacity(0.9),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+              side: BorderSide(color: ChatrixTheme.champagneGold.withOpacity(0.3)),
+            ),
+            title: Text(
+              "Confirm PayPal Payment",
+              style: GoogleFonts.cinzel(color: Colors.white, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "After completing your payment on PayPal, enter your Transaction ID below to verify and activate premium.",
+                  style: GoogleFonts.inter(color: Colors.white70, fontSize: 13),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: ChatrixTheme.champagneGold.withOpacity(0.3)),
+                  ),
+                  child: TextField(
+                    controller: txnController,
+                    style: GoogleFonts.inter(color: Colors.white, fontSize: 13),
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      hintText: "e.g. 5XJ12345AB678901C",
+                      hintStyle: GoogleFonts.inter(color: Colors.white30, fontSize: 13),
+                      prefixIcon: const Icon(Icons.receipt_long_rounded, color: Colors.white30, size: 18),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  "Find your Transaction ID in your PayPal email receipt or PayPal Activity page.",
+                  style: GoogleFonts.inter(color: Colors.white38, fontSize: 11),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+            actionsAlignment: MainAxisAlignment.spaceEvenly,
+            actions: [
+              TextButton(
+                onPressed: _isVerifying ? null : () => Navigator.pop(dialogContext),
+                child: Text("Cancel", style: GoogleFonts.inter(color: Colors.white54)),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: ChatrixTheme.champagneGold,
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: _isVerifying
+                    ? null
+                    : () async {
+                        final txnId = txnController.text.trim();
+                        if (txnId.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                "Please enter your PayPal Transaction ID.",
+                                style: GoogleFonts.inter(),
+                              ),
+                              backgroundColor: Colors.redAccent,
+                            ),
+                          );
+                          return;
+                        }
+
+                        setDialogState(() => _isVerifying = true);
+
+                        final currentUserId = AuthService().currentUserId;
+                        final currentUserEmail = AuthService().currentUser?.email;
+                        final plan = _plans[_selectedPlan];
+
+                        // ✅ SECURE: Verify transaction ID on backend before granting premium
+                        final isVerified = await RazorpayService().verifyPaypalPayment(
+                          userId: currentUserId ?? '',
+                          transactionId: txnId,
+                          planId: plan.id,
+                          amountUSD: plan.amountUSD,
+                          email: currentUserEmail,
+                        );
+
+                        if (!mounted) return;
+                        setDialogState(() => _isVerifying = false);
+
+                        if (isVerified) {
+                          Navigator.pop(dialogContext);
+                          setState(() {
+                            _isLoading = true;
+                            _loadingMessage = "Activating Premium Access...";
+                          });
+
+                          int days = 30;
+                          if (plan.id.contains("1_week")) days = 7;
+                          else if (plan.id.contains("2_months")) days = 60;
+                          else if (plan.id.contains("1_year")) days = 365;
+
+                          await AuthService().setPremiumWithExpiry(days);
+                          ref.invalidate(premiumStatusProvider);
+
+                          if (mounted) {
+                            setState(() => _isLoading = false);
+                            _showTriumphOverlay();
+                          }
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                "Transaction ID could not be verified. Please check it and try again, or contact support.",
+                                style: GoogleFonts.inter(),
+                              ),
+                              backgroundColor: Colors.redAccent,
+                              duration: const Duration(seconds: 5),
+                            ),
+                          );
+                        }
+                      },
+                child: _isVerifying
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                      )
+                    : Text("Verify & Activate", style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _handlePaymentSuccess(PaymentSuccessResponse response) async {
@@ -600,7 +805,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                   ),
                   child: Column(
                     children: [
-                      _buildActiveBenefitItem(Icons.call_rounded, "Unlimited HD Voice Calls"),
+                      _buildActiveBenefitItem(Icons.message_rounded, "Unlimited Intimate Conversations"),
                       const SizedBox(height: 14),
                       _buildActiveBenefitItem(Icons.vpn_key_rounded, "All Premium Companions Unlocked"),
                       const SizedBox(height: 14),
@@ -662,6 +867,88 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     );
   }
 
+  Widget _buildPaymentMethodSelector() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _paymentMethod = 'paypal'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: _paymentMethod == 'paypal' ? Colors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.paypal_rounded,
+                        color: _paymentMethod == 'paypal' ? Colors.black : Colors.white60,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        "PayPal / Card (USD)",
+                        style: GoogleFonts.inter(
+                          color: _paymentMethod == 'paypal' ? Colors.black : Colors.white60,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _paymentMethod = 'razorpay'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: _paymentMethod == 'razorpay' ? Colors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.payment_rounded,
+                        color: _paymentMethod == 'razorpay' ? Colors.black : Colors.white60,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        "Razorpay (INR)",
+                        style: GoogleFonts.inter(
+                          color: _paymentMethod == 'razorpay' ? Colors.black : Colors.white60,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildPurchaseView() {
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
@@ -701,10 +988,11 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                   ),
                   textAlign: TextAlign.center,
                 ).animate().fadeIn(delay: 200.ms),
-                const SizedBox(height: 48),
+                const SizedBox(height: 36),
                 
+                _buildPaymentMethodSelector(),
                 _buildPricingCards(),
-                const SizedBox(height: 48),
+                const SizedBox(height: 32),
                 
                 _buildBenefitsSection(),
                 const SizedBox(height: 48),
@@ -821,7 +1109,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                   ),
                 ),
                 Text(
-                  "₹${plan.amountINR}",
+                  _paymentMethod == 'paypal' ? "\$${plan.amountUSD}" : "₹${plan.amountINR}",
                   style: GoogleFonts.inter(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -870,8 +1158,49 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
           _buildBenefitItem("Exclusive atmospheric scenes"),
           _buildBenefitItem("Relationship journals & milestones"),
           _buildBenefitItem("Faster AI responses"),
-          _buildBenefitItem("Voice features"),
+          const SizedBox(height: 24),
+          
+          // Tier Comparison
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.02),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withOpacity(0.06)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "TIER COMPARISON",
+                  style: GoogleFonts.inter(
+                    color: ChatrixTheme.champagneGold,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text("Free Member", style: GoogleFonts.inter(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+                    Text("50 Msgs / Session (1 Hr Cooldown)", style: GoogleFonts.inter(color: Colors.white38, fontSize: 12)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text("Premium Member", style: GoogleFonts.inter(color: ChatrixTheme.champagneGold, fontSize: 13, fontWeight: FontWeight.w600)),
+                    Text("UNLIMITED Conversations (No Cooldown)", style: GoogleFonts.inter(color: ChatrixTheme.champagneGold.withOpacity(0.8), fontSize: 12, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 32),
+          
           SizedBox(
             width: double.infinity,
             height: 56,
@@ -882,7 +1211,9 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 elevation: 0,
               ),
-              onPressed: _isLoading ? null : _handleUpgrade,
+              onPressed: _isLoading 
+                  ? null 
+                  : (_paymentMethod == 'paypal' ? _handlePayPalUpgrade : _handleUpgrade),
               child: _isLoading
                   ? Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -899,7 +1230,9 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                       ],
                     )
                   : Text(
-                      "Continue with ₹${_plans[_selectedPlan].amountINR}",
+                      _paymentMethod == 'paypal'
+                          ? "Continue with \$${_plans[_selectedPlan].amountUSD}"
+                          : "Continue with ₹${_plans[_selectedPlan].amountINR}",
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 0.5),
                     ),
             ),

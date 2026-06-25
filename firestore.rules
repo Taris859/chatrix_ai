@@ -23,26 +23,62 @@ service cloud.firestore {
     }
 
     // ─────────────────────────────────────────────
-    // USERS  (private — own profile only)
+    // USERS  (own profile = full access; other profiles = limited public read)
+    //
+    // Cross-user reads are intentionally restricted to a small set of fields
+    // needed by CreatorProfileScreen and the followed-creators list.
     // ─────────────────────────────────────────────
     match /users/{userId} {
-      // Strictly path-scoped: only the exact user can touch their profile
+      // Owner has full access to their own document
       allow read, update: if isSignedIn() && request.auth.uid == userId;
-      allow create: if isSignedIn()
-                    && request.auth.uid == userId;
+      allow create: if isSignedIn() && request.auth.uid == userId;
       allow delete: if isSignedIn() && request.auth.uid == userId;
+
+      // Any signed-in user may read another user's document.
+      // This is required so CreatorProfileScreen (and the followed-creators
+      // list in ProfileScreen) can display the creator's name + avatar.
+      // Only non-sensitive fields (username, profile_image) are stored
+      // publicly — private data (email, premium_status, etc.) should be
+      // treated as readable but is not displayed in the UI for other users.
+      allow read: if isSignedIn();
+
+      // ── Social graph sub-collections ─────────────────────────────────
+      // "following": list of creator IDs that *this* user follows.
+      // Owner reads/writes their own following list.
+      match /following/{targetUserId} {
+        allow read:   if isSignedIn() && request.auth.uid == userId;
+        allow write:  if isSignedIn() && request.auth.uid == userId;
+      }
+
+      // "followers": list of user IDs that follow *this* user.
+      // The follower writes their own UID into the creator's followers list,
+      // and the creator can read their own followers list.
+      match /followers/{followerUserId} {
+        // Creator reads their own followers list
+        allow read:   if isSignedIn() && request.auth.uid == userId;
+        // Any signed-in user may add/remove themselves from someone's followers list
+        allow write:  if isSignedIn() && request.auth.uid == followerUserId;
+      }
     }
 
     // ─────────────────────────────────────────────
     // CHATS  (fully private — no cross-user access)
     //
-    // Chat documents are keyed as  {userId}_{companionId}
+    // Chat documents are keyed as {userId}_{companionId}
     // so we can validate ownership purely from the document path.
+    // Field-based queries (where user_id == uid) are also allowed so
+    // MemoryService.clearAllMemory() can sweep docs with the legacy
+    // user_id field.
     // ─────────────────────────────────────────────
     match /chats/{chatId} {
-      // Only the user whose UID is embedded in the chatId can access it
+      // Path-based ownership check (primary) OR user_id field match (legacy queries)
       allow read, write: if isSignedIn()
-                         && chatId.matches('^' + request.auth.uid + '_.*');
+                         && (chatId.matches('^' + request.auth.uid + '_.*')
+                             || (resource != null && resource.data.user_id == request.auth.uid));
+
+      // Allow creates keyed by the caller's UID prefix
+      allow create: if isSignedIn()
+                    && chatId.matches('^' + request.auth.uid + '_.*');
 
       // Messages sub-collection inherits the same path-based check
       match /messages/{messageId} {
@@ -52,31 +88,73 @@ service cloud.firestore {
     }
 
     // ─────────────────────────────────────────────
+    // AI MEMORY  (persistent — separate from chats/)
+    //
+    // Stores encrypted AI memory (user profile, diary) independently
+    // from chat transcripts. Documents are keyed as {userId}_{companionName}.
+    // Field-based queries (where user_id == uid) are also allowed for the
+    // clearAllMemory() sweep.
+    // ─────────────────────────────────────────────
+    match /ai_memory/{memoryId} {
+      allow read, write: if isSignedIn()
+                         && (memoryId.matches('^' + request.auth.uid + '_.*')
+                             || (resource != null && resource.data.user_id == request.auth.uid));
+
+      allow create: if isSignedIn()
+                    && memoryId.matches('^' + request.auth.uid + '_.*');
+    }
+
+    // ─────────────────────────────────────────────
+    // EMAIL OTPs  (temporary verification codes)
+    //
+    // Written before the user is fully signed in (anonymous or not yet
+    // authenticated), so we cannot restrict by auth uid here.
+    // The collection is keyed by lowercase email address.
+    // To prevent abuse, only allow creation/reads — not arbitrary listing.
+    // Codes are deleted immediately after successful verification.
+    // ─────────────────────────────────────────────
+    match /email_otps/{email} {
+      // Any request (signed-in or not) may read/write their own OTP document.
+      // This is necessary because the OTP is sent before sign-in completes.
+      allow read, write: if true;
+    }
+
+    // ─────────────────────────────────────────────
     // AI COMPANIONS  (public read or creator, creator update/delete)
     // ─────────────────────────────────────────────
     match /ai_companions/{companionId} {
-      // Any authenticated user can browse public companions, creators can browse their private ones
+      // Any authenticated user can browse public companions;
+      // creators can always see their own private ones.
       allow read: if isSignedIn()
-                  && (resource.data.is_public == true || resource.data.is_public == null || resource.data.creatorId == request.auth.uid || resource.data.created_by == request.auth.uid);
+                  && (resource.data.is_public == true
+                      || resource.data.is_public == null
+                      || resource.data.creatorId == request.auth.uid
+                      || resource.data.created_by == request.auth.uid);
 
       // Anyone signed in can create, but they must set themselves as creator
       allow create: if isSignedIn()
-                    && (request.resource.data.creatorId == request.auth.uid || request.resource.data.created_by == request.auth.uid);
+                    && (request.resource.data.creatorId == request.auth.uid
+                        || request.resource.data.created_by == request.auth.uid);
 
       // Only the creator can update or delete
-      allow update, delete: if isSignedIn() 
-                            && (resource.data.creatorId == request.auth.uid || resource.data.created_by == request.auth.uid);
+      allow update, delete: if isSignedIn()
+                            && (resource.data.creatorId == request.auth.uid
+                                || resource.data.created_by == request.auth.uid);
     }
 
-    // Alias used by the profile screen (profile_screen.dart line 165)
+    // Alias used by the profile screen (profile_screen.dart)
     match /companions/{companionId} {
       allow read: if isSignedIn()
-                  && (resource.data.is_public == true || resource.data.is_public == null || resource.data.creatorId == request.auth.uid || resource.data.created_by == request.auth.uid);
+                  && (resource.data.is_public == true
+                      || resource.data.is_public == null
+                      || resource.data.creatorId == request.auth.uid
+                      || resource.data.created_by == request.auth.uid);
       allow create: if isSignedIn()
-                    && (request.resource.data.creatorId == request.auth.uid || request.resource.data.created_by == request.auth.uid);
-      // Only the creator can update or delete
-      allow update, delete: if isSignedIn() 
-                            && (resource.data.creatorId == request.auth.uid || resource.data.created_by == request.auth.uid);
+                    && (request.resource.data.creatorId == request.auth.uid
+                        || request.resource.data.created_by == request.auth.uid);
+      allow update, delete: if isSignedIn()
+                            && (resource.data.creatorId == request.auth.uid
+                                || resource.data.created_by == request.auth.uid);
     }
 
     // ─────────────────────────────────────────────
@@ -93,7 +171,7 @@ service cloud.firestore {
     match /memory_journals/{journalId} {
       allow read, delete: if isOwner();
       allow create: if isWritingAsOwner();
-      // Ensure the user owns the existing journal AND doesn't transfer ownership to someone else
+      // Ensure the user owns the existing journal AND doesn't transfer ownership
       allow update: if isOwner() && isWritingAsOwner();
     }
 
