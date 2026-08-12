@@ -386,6 +386,6 @@ Unauthorized copying, redistribution, or commercial use of the Chatrix source co
 
 Chatrix AI
 
-Built by taris859.
+Built by Tanuja.
 
 GitHub: https://github.com/taris859
