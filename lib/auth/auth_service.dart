@@ -356,6 +356,11 @@ class AuthService {
           await prefs.remove('pending_referral_code');
         }
       }
+      
+      if (!user.isAnonymous) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('chatrix_logged_in', true);
+      }
     } catch (e) {
       print("Error creating user Firestore record: $e");
     }
@@ -513,6 +518,8 @@ class AuthService {
       print("Google SignOut Error: $e");
     }
     await _auth.signOut();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('chatrix_logged_in');
   }
 
   /// Helper to convert Firebase Auth error codes to user-friendly messages

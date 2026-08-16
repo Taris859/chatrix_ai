@@ -20,6 +20,7 @@ from services.memory_service import MemoryService
 from services.notification_service import NotificationService
 from services.notification_scheduler import start_scheduler_loop
 from services.email_service import send_subscription_email
+from services.llm_service import LLMService
 
 app = FastAPI(title="Chatrix API Gateway", version="3.0-Gateway")
 
@@ -96,7 +97,7 @@ async def rate_limiting_middleware(request: Request, call_next):
             pass
 
     if user_id:
-        user_key = str(user_id).trim() if hasattr(str(user_id), "trim") else str(user_id).strip()
+        user_key = str(user_id).strip()
         if user_key and not await user_limiter.is_allowed(user_key):
             from fastapi.responses import JSONResponse
             return JSONResponse(
@@ -105,8 +106,6 @@ async def rate_limiting_middleware(request: Request, call_next):
             )
 
     return await call_next(request)
-
-NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY") or "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"
 
 class ChatRequest(BaseModel):
     message: str
@@ -157,23 +156,48 @@ def read_root():
 async def chat_proxy(request: dict):
     """
     Secure completions proxy router for client devices.
+    Rotates NVIDIA keys automatically if rate-limited (429) or unauthorized/out of credits (401).
     """
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {NVIDIA_API_KEY}"
-    }
+    nvidia_keys = LLMService.get_nvidia_keys()
+    if not nvidia_keys:
+        raise HTTPException(status_code=500, detail="No NVIDIA API keys configured on the backend server.")
+
     async with httpx.AsyncClient() as client:
-        try:
-            response = await client.post(
-                "https://integrate.api.nvidia.com/v1/chat/completions",
-                json=request,
-                headers=headers,
-                timeout=30.0
-            )
-            return response.json()
-        except Exception as e:
-            print(f"Proxy Completion Error: {e}")
-            raise HTTPException(status_code=500, detail=f"Failed to communicate with NVIDIA API: {str(e)}")
+        last_error = None
+        for idx, key in enumerate(nvidia_keys):
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {key}"
+            }
+            try:
+                response = await client.post(
+                    "https://integrate.api.nvidia.com/v1/chat/completions",
+                    json=request,
+                    headers=headers,
+                    timeout=30.0
+                )
+                
+                # Check for rate-limiting or credentials issues to trigger key rotation
+                if response.status_code in (401, 429):
+                    print(f"[Key Rotation Proxy] Key #{idx+1} failed with status {response.status_code}. Detail: {response.text}. Rotating...")
+                    last_error = f"Status {response.status_code}: {response.text}"
+                    continue
+                
+                # For standard success (200) or client/server payload errors (e.g. 400), return directly
+                if response.status_code != 200:
+                    return response.json()
+
+                return response.json()
+            except Exception as e:
+                print(f"[Key Rotation Proxy] Key #{idx+1} exception: {e}. Rotating...")
+                last_error = str(e)
+                continue
+
+        # If we reach here, all keys in the pool have been exhausted
+        raise HTTPException(
+            status_code=502,
+            detail=f"Failed to communicate with NVIDIA API. All keys in key pool exhausted. Last error: {last_error}"
+        )
 
 @app.get("/history")
 def get_history(user_id: str, companion_name: str):
@@ -310,7 +334,8 @@ async def trigger_presence_notifications(request: Optional[TriggerPresenceReques
 
 @app.get("/admin/analytics")
 def get_admin_analytics(token: str):
-    if token != "CHATRIX_ADMIN_SECURE_TOKEN_2026":
+    admin_token = os.getenv("ADMIN_TOKEN", "")
+    if not admin_token or token != admin_token:
         raise HTTPException(status_code=403, detail="Unauthorized admin session.")
     return {
         "total_users": 1420,

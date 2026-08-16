@@ -64,16 +64,7 @@ class MemoryService:
 
             # Trigger emotional summaries
             if len(messages) % 10 == 0:
-                # To maintain summarize_emotions compatibility, we fetch raw openAI client
-                # using LLMService details as fallback, or invoke inline.
-                from openai import OpenAI
-                import os
-                # Lightweight summarization client
-                summary_client = OpenAI(
-                    base_url="https://integrate.api.nvidia.com/v1",
-                    api_key=os.getenv("NVIDIA_API_KEY", "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")
-                )
-                new_summary = summarize_emotions(summary_client, messages, session_data.get("summary"))
+                new_summary = summarize_emotions(messages, session_data.get("summary"))
                 if new_summary:
                     diary_entry = new_summary.pop("new_diary_entry", None)
                     update_session_data(user_id, companion_name, summary=new_summary, diary_entry=diary_entry)

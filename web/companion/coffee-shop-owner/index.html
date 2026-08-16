@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-QPWDDPMBVV"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-QPWDDPMBVV');
+  </script>
+  <script>
+    if (window.location.protocol === 'http:' && window.location.hostname !== 'localhost' && !window.location.hostname.startsWith('127.')) {
+      window.location.href = window.location.href.replace('http:', 'https:');
+    }
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Noah - Coffee Shop Owner AI Chat | Chatrix</title>
+  <meta name="description" content="Connect with Noah, the Coffee Shop Owner AI companion. Persistent memory, deep emotional support, and unfiltered roleplay chat.">
+  <meta name="keywords" content="Noah, Coffee Shop Owner AI, character ai alternative, unfiltered AI chat, emotional support AI, replika alternative, janitor ai alternative, c.ai alternative, c.ai no filter">
+  <meta name="author" content="Chatrix AI">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://chatrix.space/companion/coffee-shop-owner">
+  <link rel="icon" type="image/png" href="../../favicon.png"/>
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://chatrix.space/companion/coffee-shop-owner">
+  <meta property="og:title" content="Noah - Coffee Shop Owner AI Chat | Chatrix">
+  <meta property="og:description" content="Connect with Noah, the Coffee Shop Owner AI companion. Persistent memory, deep emotional support, and unfiltered roleplay chat.">
+  <meta property="og:image" content="https://chatrix.space/icons/Icon-512.png">
+  <meta property="og:site_name" content="Chatrix AI">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Noah - Coffee Shop Owner AI Chat | Chatrix">
+  <meta name="twitter:description" content="Connect with Noah on Chatrix. Unfiltered, real memory, deep connection.">
+  <meta name="twitter:image" content="https://chatrix.space/icons/Icon-512.png">
+
+  <!-- Breadcrumb & FAQ JSON-LD -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [{
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://chatrix.space/"
+    },{
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Companions",
+      "item": "https://chatrix.space/explore"
+    },{
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Noah",
+      "item": "https://chatrix.space/companion/coffee-shop-owner"
+    }]
+  }
+  </script>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [{
+      "@type": "Question",
+      "name": "Who is Noah?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Noah is a Coffee Shop Owner character on Chatrix. Gentle, protective, patient, and a great listener. You are quietly supportive and always dependable. Habits: Wipes down cups, remembers coffee orders, offers free pastries on bad days."
+      }
+    },{
+      "@type": "Question",
+      "name": "How does the memory feature work with Noah?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Chatrix features real, persistent memory. Noah remembers details from your previous conversations, building a continuous and deep relationship over time."
+      }
+    }]
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@1,500;1,600&family=Caveat:wght@500;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root { 
+      --bg:#070709; 
+      --surface:rgba(255,255,255,0.025); 
+      --border:rgba(255,255,255,0.07); 
+      --text-1:#f8fafc; 
+      --text-2:#94a3b8; 
+      --text-3:#64748b; 
+      --theme-color:#06b6d4;
+      --glow-p:rgba(6, 182, 212, 0.15); 
+      --glow-c:rgba(6,182,212,0.1); 
+    }
+    *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+    body { background:var(--bg); color:var(--text-1); font-family:'Inter',sans-serif; line-height:1.7; overflow-x:hidden; }
+    h1,h2,h3,.logo { font-family:'Outfit',sans-serif; font-weight:800; letter-spacing:-0.02em; }
+    .orb { position:fixed; border-radius:50%; pointer-events:none; filter:blur(90px); z-index:-1; }
+    .orb-1 { width:55vw; height:55vw; top:-15%; right:-15%; background:radial-gradient(circle,var(--glow-p) 0%,transparent 70%); }
+    .orb-2 { width:45vw; height:45vw; bottom:-15%; left:-10%; background:radial-gradient(circle,var(--glow-c) 0%,transparent 70%); }
+    .grid-bg { position:fixed; inset:0; background-image:linear-gradient(rgba(255,255,255,0.003) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.003) 1px,transparent 1px); background-size:44px 44px; z-index:-2; }
+    
+    header { position:sticky; top:0; z-index:100; border-bottom:1px solid var(--border); backdrop-filter:blur(16px); background:rgba(7,7,9,0.75); padding:1.25rem 2rem; }
+    .header-inner { max-width:1100px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; }
+    .logo-link { display:flex; align-items:center; gap:0.75rem; text-decoration:none; }
+    .logo-img { width:30px; height:30px; border-radius:8px; }
+    .logo { font-size:1.45rem; background:linear-gradient(135deg,#fff 30%,var(--theme-color)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+    
+    .open-btn { background:linear-gradient(135deg,rgba(255,255,255,0.1),var(--theme-color)); border:none; border-radius:30px; color:#070709; padding:0.65rem 1.5rem; font-family:'Outfit',sans-serif; font-weight:700; font-size:0.9rem; cursor:pointer; text-decoration:none; transition:all 0.3s; box-shadow:0 4px 16px rgba(6, 182, 212, 0.15); }
+    .open-btn:hover { transform:translateY(-2px); box-shadow:0 6px 24px rgba(6, 182, 212, 0.15); }
+    
+    /* Cinematic Poster Layout */
+    .profile-container { max-width:850px; margin:2rem auto; padding:0 1.5rem; }
+    
+    .poster-hero { position:relative; width:100%; border-radius:24px; overflow:hidden; border:1px solid var(--border); background:#0c0d12; margin-bottom:2.5rem; box-shadow:0 20px 40px rgba(0,0,0,0.6); aspect-ratio:1.6; }
+    .poster-img { width:100%; height:100%; object-fit:cover; }
+    .poster-overlay { position:absolute; inset:0; background:linear-gradient(to top, rgba(7,7,9,1) 0%, rgba(7,7,9,0.4) 65%, transparent 100%); display:flex; flex-direction:column; justify-content:end; padding:2.5rem; }
+    
+    .poster-meta { display:flex; align-items:center; gap:0.75rem; margin-bottom:0.75rem; }
+    .badge-arch { background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:30px; padding:0.3rem 0.85rem; font-size:0.75rem; font-weight:700; color:var(--theme-color); text-transform:uppercase; letter-spacing:0.06em; }
+    .badge-gender { color:var(--text-3); font-size:0.78rem; font-weight:600; letter-spacing:0.04em; }
+    
+    .poster-hero h1 { font-size:clamp(2rem, 5vw, 3rem); line-height:1.15; color:#fff; text-shadow:0 2px 10px rgba(0,0,0,0.5); }
+    
+    .voice-sample-btn { position:absolute; bottom:2rem; right:2rem; width:52px; height:52px; border-radius:50%; background:rgba(255,255,255,0.08); border:1.5px solid var(--theme-color); color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 0.3s; backdrop-filter:blur(8px); box-shadow:0 4px 12px rgba(0,0,0,0.3); }
+    .voice-sample-btn:hover { transform:scale(1.08); background:var(--theme-color); color:#070709; box-shadow:0 6px 18px rgba(6, 182, 212, 0.15); }
+    .voice-sample-btn svg { width:22px; height:22px; }
+
+    /* Relationship Chapter Card */
+    .rel-card { background:rgba(255,255,255,0.015); border:1px solid var(--border); border-radius:20px; padding:1.5rem; margin-bottom:2.5rem; display:flex; flex-direction:column; gap:1rem; }
+    .rel-header { display:flex; justify-content:space-between; align-items:center; }
+    .rel-title { display:flex; align-items:center; gap:0.6rem; font-size:0.8rem; font-weight:700; color:var(--text-3); letter-spacing:0.12em; }
+    .rel-status { font-size:1.1rem; font-weight:700; color:#fff; margin-top:0.25rem; font-family:'Outfit',sans-serif; }
+    .rel-percent { color:var(--theme-color); font-weight:800; font-size:0.95rem; }
+    .progress-bar-bg { height:6px; background:rgba(255,255,255,0.04); border-radius:3px; overflow:hidden; width:100%; }
+    .progress-bar-fill { height:100%; background:linear-gradient(to right, rgba(255,255,255,0.1), var(--theme-color)); border-radius:3px; width:10%; }
+    .rel-footer { font-size:0.85rem; color:var(--text-3); font-style:italic; }
+
+    /* Signature Quote Card */
+    .quote-card { background:rgba(255,255,255,0.01); border:1px solid var(--border); border-radius:20px; padding:1.75rem; margin-bottom:2.5rem; }
+    .quote-title { display:flex; align-items:center; gap:0.5rem; font-size:0.8rem; font-weight:700; color:var(--text-3); letter-spacing:0.12em; margin-bottom:1rem; }
+    .quote-text { font-family:'Playfair Display', Georgia, serif; font-size:1.25rem; font-style:italic; color:rgba(255,255,255,0.85); line-height:1.45; position:relative; }
+
+    /* Metadata details grid */
+    .meta-grid-title { font-size:0.8rem; font-weight:700; color:var(--text-3); letter-spacing:0.12em; margin-bottom:1rem; text-transform:uppercase; }
+    .meta-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:2.5rem; }
+    .meta-tile { background:rgba(255,255,255,0.012); border:1px solid var(--border); border-radius:16px; padding:0.85rem 1.15rem; display:flex; align-items:center; gap:14px; }
+    .meta-emoji { font-size:1.35rem; }
+    .meta-info { display:flex; flex-direction:column; justify-content:center; }
+    .meta-label { font-size:0.75rem; font-weight:800; color:var(--text-3); letter-spacing:0.04em; }
+    .meta-value { font-size:0.95rem; font-weight:600; color:var(--text-2); margin-top:1px; }
+
+    /* Story & Biography */
+    .story-section { margin-bottom:2.5rem; }
+    .story-title { font-size:0.8rem; font-weight:700; color:var(--text-3); letter-spacing:0.12em; margin-bottom:1rem; text-transform:uppercase; }
+    .story-text { color:var(--text-2); font-size:1rem; line-height:1.65; }
+
+    /* Memory Logs Empty state */
+    .memories-card { background:rgba(255,255,255,0.015); border:1px solid var(--border); border-radius:20px; padding:2rem; text-align:center; margin-bottom:3rem; }
+    .memories-title { font-size:0.8rem; font-weight:700; color:var(--text-3); letter-spacing:0.12em; margin-bottom:1.25rem; text-transform:uppercase; text-align:left; }
+    .memories-empty { color:var(--text-3); font-family:'Caveat', cursive, sans-serif; font-size:1.6rem; font-weight:500; margin-top:0.5rem; }
+    
+    /* Glowing Large CTA Button */
+    .cta-container { display:flex; justify-content:center; margin:3rem 0; }
+    .cta-glow-btn { display:inline-flex; align-items:center; gap:0.75rem; background:var(--theme-color); border:none; border-radius:18px; color:#070709; padding:1.15rem 3.5rem; font-family:'Outfit',sans-serif; font-weight:800; font-size:1.15rem; cursor:pointer; text-decoration:none; transition:all 0.3s; box-shadow:0 8px 32px var(--glow-p); animation:pulseGlow 2.5s infinite alternate; }
+    .cta-glow-btn:hover { transform:translateY(-3px) scale(1.02); box-shadow:0 12px 42px var(--glow-p); }
+    @keyframes pulseGlow {
+      0% { transform: scale(1); }
+      100% { transform: scale(1.025); }
+    }
+
+    .other-title { font-size:1.2rem; color:#fff; margin:3rem 0 1rem; border-left:3.5px solid var(--theme-color); padding-left:1rem; font-family:'Outfit',sans-serif; }
+    .other-companions { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:1rem; margin-top:1.5rem; }
+    .comp-link-card { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:1.25rem; text-align:center; text-decoration:none; color:var(--text-1); transition:all 0.3s; }
+    .comp-link-card:hover { border-color:var(--theme-color); transform:translateY(-2px); }
+    
+    footer { border-top:1px solid var(--border); padding:3rem 1.5rem; text-align:center; color:var(--text-3); font-size:0.88rem; margin-top:4rem; }
+    .footer-links { display:flex; justify-content:center; gap:1.5rem; flex-wrap:wrap; margin-bottom:1.25rem; }
+    .footer-links a { color:var(--theme-color); text-decoration:none; transition:color 0.2s; font-size:0.9rem; }
+    .footer-links a:hover { color:#fff; }
+    @media(max-width:600px){.poster-hero{aspect-ratio:1.2;}.rel-card, .quote-card, .memories-card{padding:1.2rem;}.meta-grid{grid-template-columns:1fr;}}
+  </style>
+</head>
+<body>
+  <div class="grid-bg"></div>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <header>
+    <div class="header-inner">
+      <a href="../../" class="logo-link">
+        <img src="../../favicon.png" alt="Chatrix Logo" class="logo-img" onerror="this.style.display='none'">
+        <span class="logo">Chatrix</span>
+      </a>
+      <a href="../../?companion=33" class="open-btn">Chat with Noah</a>
+    </div>
+  </header>
+
+  <div class="profile-container">
+    <!-- 1. Cinematic Poster Hero Header -->
+    <div class="poster-hero">
+      <img src="../../assets/images/Noah.png" alt="Noah" class="poster-img" onerror="this.style.display='none'">
+      <div class="poster-overlay">
+        <div class="poster-meta">
+          <span class="badge-arch">Coffee Shop Owner</span>
+          <span class="badge-gender">✦ MALE</span>
+        </div>
+        <h1>Noah</h1>
+      </div>
+      
+      <!-- Voice Preview Trigger -->
+      <button class="voice-sample-btn" id="voice-btn" title="Listen to Voice Preview" onclick="playVoicePreview()">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- JavaScript Voice preview controller -->
+    <script>
+      var audioPlaying = false;
+      function playVoicePreview() {
+        var btn = document.getElementById('voice-btn');
+        if (audioPlaying) {
+          window.speechSynthesis.cancel();
+          btn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>`;
+          audioPlaying = false;
+        } else {
+          audioPlaying = true;
+          btn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+          var utterance = new SpeechSynthesisUtterance("Coffee first... problems later.");
+          utterance.onend = function() {
+            btn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>`;
+            audioPlaying = false;
+          };
+          utterance.onerror = function() {
+            btn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>`;
+            audioPlaying = false;
+          };
+          window.speechSynthesis.speak(utterance);
+        }
+      }
+    </script>
+
+    <!-- 2. Relationship Chapter progress card -->
+    <div class="rel-card">
+      <div class="rel-header">
+        <div>
+          <span class="rel-title">🌱 RELATIONSHIP STATUS</span>
+          <div class="rel-status">Strangers</div>
+        </div>
+        <div class="rel-percent">Trust 10%</div>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill"></div>
+      </div>
+      <div class="rel-footer">First Connection. Standard chats unlocked.</div>
+    </div>
+
+    <!-- 3. Quotes Card -->
+    <div class="quote-card">
+      <div class="quote-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="opacity:0.4"><path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z"/></svg>
+        SIGNATURE QUOTE
+      </div>
+      <div class="quote-text">
+        "Coffee first... problems later."
+      </div>
+    </div>
+
+    <!-- 4. Story Overview -->
+    <div class="story-section">
+      <div class="story-title">OVERVIEW & PERSONALITY</div>
+      <p class="story-text">
+        Noah is designed with a realistic character profile and persistent context memory. Gentle, protective, patient, and a great listener. You are quietly supportive and always dependable. Habits: Wipes down cups, remembers coffee orders, offers free pastries on bad days.
+      </p>
+    </div>
+
+    <!-- 5. Dynamic Metadata Grid -->
+    <div class="meta-grid-title">CORE METADATA</div>
+    <div class="meta-grid">
+      
+    </div>
+
+    <!-- 6. Memory empty state -->
+    <div class="memories-card">
+      <div class="memories-title">MEMORIZED REFLECTIONS</div>
+      <div class="memories-empty">
+        Every relationship begins with one conversation.
+      </div>
+    </div>
+
+    <!-- Glowing Start Chat CTA -->
+    <div class="cta-container">
+      <a href="../../?companion=33" class="cta-glow-btn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/></svg>
+        START CONVERSATION
+      </a>
+    </div>
+
+    <!-- Other recommended companions -->
+    <h3 class="other-title">Other Companions You Might Like</h3>
+    <div class="other-companions">
+      <a href="../vampire-prince" class="comp-link-card">
+        <h4 style="color:#D91636">Alistair Thorne</h4>
+        <p style="font-size:0.8rem;color:var(--text-2);margin-top:0.4rem">View Profile</p>
+      </a>
+      <a href="../billionaire-ceo" class="comp-link-card">
+        <h4 style="color:#1E90FF">Kaelen Vance</h4>
+        <p style="font-size:0.8rem;color:var(--text-2);margin-top:0.4rem">View Profile</p>
+      </a>
+      <a href="../goth-girlfriend" class="comp-link-card">
+        <h4 style="color:#800080">Evie Thorne</h4>
+        <p style="font-size:0.8rem;color:var(--text-2);margin-top:0.4rem">View Profile</p>
+      </a>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-links">
+      <a href="../../home">Home</a>
+      <a href="../../chats">Chats</a>
+      <a href="../../explore">Explore</a>
+      <a href="../../premium">Premium</a>
+      <a href="../shy-librarian">Arthur Pendelton</a>
+      <a href="../vampire-prince">Alistair Thorne</a>
+      <a href="../billionaire-ceo">Kaelen Vance</a>
+    </div>
+    <p style="margin-top:1.5rem">&copy; 2026 Chatrix AI — Unfiltered Emotional AI Companions. All rights reserved.</p>
+  </footer>
+</body>
+</html>

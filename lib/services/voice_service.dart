@@ -13,9 +13,43 @@ class VoiceService {
   
   // User's ElevenLabs configuration
   String _apiKey = "sk_b6af5e1e2354b2042bfdf59d2a43d0cd8e0a66557fa1774a";
-  final String _maleVoiceId = "jhBzyKbsdeM6F66SZCaK";
-  final String _femaleVoiceId = "EXAVITQu4vr4xnSDxMaL"; // Default custom woman voice (Sarah)
+  final String _maleVoiceId = "pNInz6obpgDQGcFmaJgB"; // Adam ⭐⭐⭐⭐⭐
+  final String _femaleVoiceId = "21m00Tcm4TlvDq8ikWAM"; // Rachel ⭐⭐⭐⭐⭐
   
+  String getVoiceIdForCompanion(String name, String archetype, bool isFemale) {
+    final nameLower = name.toLowerCase();
+    final archLower = archetype.toLowerCase();
+
+    if (isFemale) {
+      if (archLower.contains('therapist') || nameLower.contains('mira') || nameLower.contains('sunny')) {
+        return "LcfcDJNUP1GQjkzn1xUU"; // Emily
+      }
+      if (archLower.contains('flirty') || archLower.contains('dominant') || archLower.contains('yandere') || 
+          nameLower.contains('valentina') || nameLower.contains('seraphina') || nameLower.contains('chloe')) {
+        return "EXAVITQu4vr4xnSDxMaL"; // Bella / Sarah
+      }
+      if (archLower.contains('shy') || nameLower.contains('lily') || nameLower.contains('aria') || nameLower.contains('elise')) {
+        return "pFZP5JQG7iQjIQuC4Bku"; // Lily
+      }
+      if (archLower.contains('cold') || archLower.contains('ceo') || nameLower.contains('zero') || nameLower.contains('evie') || nameLower.contains('isla')) {
+        return "21m00Tcm4TlvDq8ikWAM"; // Rachel
+      }
+      return "21m00Tcm4TlvDq8ikWAM"; // Rachel default
+    } else {
+      if (archLower.contains('friend') || nameLower.contains('josh') || nameLower.contains('leo') || nameLower.contains('marcus')) {
+        return "TxGEqnHWrfWFTfGW9XjX"; // Josh
+      }
+      if (archLower.contains('protective') || nameLower.contains('antoni') || nameLower.contains('dante')) {
+        return "ErXwobaYiN019PkySvjV"; // Antoni
+      }
+      if (archLower.contains('husband') || archLower.contains('boyfriend') || nameLower.contains('adam') || 
+          nameLower.contains('arthur') || nameLower.contains('kaelen') || nameLower.contains('alistair') || nameLower.contains('noah')) {
+        return "pNInz6obpgDQGcFmaJgB"; // Adam
+      }
+      return "pNInz6obpgDQGcFmaJgB"; // Adam default
+    }
+  }
+
   void updateApiKey(String key) {
     if (key.trim().isNotEmpty) {
       _apiKey = key.trim();
@@ -90,41 +124,41 @@ class VoiceService {
         print("VoiceService: No voice ID provided. Falling back to: $activeVoiceId");
       }
 
-      // Determine voice parameters based on companion and style
-      double stability = customStability ?? 0.5;
-      double similarityBoost = customSimilarity ?? 0.75;
-      double style = customStyle ?? 0.0;
+      // Determine voice parameters based on companion and style (user default stability: 0.35, similarity: 0.85, style: 0.45)
+      double stability = customStability ?? 0.35;
+      double similarityBoost = customSimilarity ?? 0.85;
+      double style = customStyle ?? 0.45;
 
-      // Automatically fine-tune settings for highly recognizable sensual or toxic voice profiles
+      // Automatically fine-tune settings for highly recognizable voice profiles
       if (customStability == null && customSimilarity == null && customStyle == null) {
-        if (activeVoiceId == "WtHkyNC9q67bYvLejE3N") { // Dante (Mafia Boss - Deep, Toxic, Seductive)
-          stability = 0.38;
-          similarityBoost = 0.88;
-          style = 0.15;
-        } else if (activeVoiceId == "jhBzyKbsdeM6F66SZCaK") { // Male CEO / Professor / Doctor / Baker (Mature, deep, steady, dominant/gentle)
-          stability = 0.50;
+        if (activeVoiceId == "21m00Tcm4TlvDq8ikWAM") { // Rachel (Cold CEO / Girlfriend - lower stability)
+          stability = 0.28;
           similarityBoost = 0.85;
-          style = 0.05;
-        } else if (activeVoiceId == "NXaTw4ifg0LAguvKuIwZ") { // Male Artist / Hacker / Mercenary / Rival (Expressive, highly dynamic, energetic/moody)
+          style = 0.45;
+        } else if (activeVoiceId == "EXAVITQu4vr4xnSDxMaL") { // Bella (Yandere / Flirty - higher style exaggeration)
+          stability = 0.30;
+          similarityBoost = 0.85;
+          style = 0.65;
+        } else if (activeVoiceId == "pFZP5JQG7iQjIQuC4Bku") { // Lily (Shy / Girlfriend)
+          stability = 0.35;
+          similarityBoost = 0.85;
+          style = 0.45;
+        } else if (activeVoiceId == "LcfcDJNUP1GQjkzn1xUU") { // Emily (Therapist)
           stability = 0.45;
-          similarityBoost = 0.80;
-          style = 0.10;
-        } else if (activeVoiceId == "gUU37agQvEpxeWrZUIMk") { // Alistair / Bodyguard / Violinist (Dark, extremely seductive, deep)
-          stability = 0.40;
-          similarityBoost = 0.82;
-          style = 0.12;
-        } else if (activeVoiceId == "4tRn1lSkEn13EVTuqb0g") { // Flirty Females (Valentina, Seraphina, Chloe, Isla, Evie - magnetic, playful, seductive)
-          stability = 0.42;
           similarityBoost = 0.85;
-          style = 0.15;
-        } else if (activeVoiceId == "4BAlflaQyhIcCfHiEI7x") { // Comforting / Gentle Females (Aria, Sunny, Diana, Naomi, Maya - very warm, gentle, sweet)
-          stability = 0.55;
-          similarityBoost = 0.80;
-          style = 0.05;
-        } else if (activeVoiceId == "1SaGpH4wLZDmppsPYVpx") { // Younger / Charming Males (Cassian, Arthur, Leo, Haru, Marcus - soft, captivating, playful)
-          stability = 0.48;
-          similarityBoost = 0.80;
-          style = 0.08;
+          style = 0.35;
+        } else if (activeVoiceId == "pNInz6obpgDQGcFmaJgB") { // Adam (Boyfriend / Husband)
+          stability = 0.35;
+          similarityBoost = 0.85;
+          style = 0.45;
+        } else if (activeVoiceId == "ErXwobaYiN019PkySvjV") { // Antoni (Protective Husband)
+          stability = 0.40;
+          similarityBoost = 0.85;
+          style = 0.40;
+        } else if (activeVoiceId == "TxGEqnHWrfWFTfGW9XjX") { // Josh (Best Friend)
+          stability = 0.35;
+          similarityBoost = 0.85;
+          style = 0.45;
         }
       }
 

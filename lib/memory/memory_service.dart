@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/llm_engine.dart';
 import '../services/encryption_service.dart';
+import '../models/companion.dart';
 
 class MemoryService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -34,6 +35,83 @@ class MemoryService {
       }
     }
     return [];
+  }
+
+  Future<void> migrateGuestCaches({
+    required String guestId,
+    required String authenticatedId,
+    required String companionName,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    
+    // 1. Migrate chat transcripts
+    final oldChatKey = 'chat_${guestId}_$companionName';
+    final newChatKey = 'chat_${authenticatedId}_$companionName';
+    final chatCached = prefs.getString(oldChatKey);
+    if (chatCached != null) {
+      try {
+        final decrypted = await EncryptionService().decrypt(chatCached, guestId);
+        final reEncrypted = await EncryptionService().encrypt(decrypted, authenticatedId);
+        await prefs.setString(newChatKey, reEncrypted);
+        await prefs.remove(oldChatKey);
+        
+        final chatId = '${authenticatedId}_$companionName';
+        await _firestore.collection('chats').doc(chatId).set({
+          'encrypted_messages': reEncrypted,
+          'last_updated': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      } catch (e) {
+        print("Error migrating chat cache: $e");
+      }
+    }
+    
+    // 2. Migrate AI memory summaries
+    final oldMemKey = 'memory_${guestId}_$companionName';
+    final newMemKey = 'memory_${authenticatedId}_$companionName';
+    final memCached = prefs.getString(oldMemKey);
+    if (memCached != null) {
+      try {
+        final decrypted = await EncryptionService().decrypt(memCached, guestId);
+        final reEncrypted = await EncryptionService().encrypt(decrypted, authenticatedId);
+        await prefs.setString(newMemKey, reEncrypted);
+        await prefs.remove(oldMemKey);
+        
+        final memId = '${authenticatedId}_$companionName';
+        await _firestore.collection('ai_memory').doc(memId).set({
+          'encrypted_memory': reEncrypted,
+          'last_updated': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      } catch (e) {
+        print("Error migrating memory cache: $e");
+      }
+    }
+    
+    // 3. Migrate unlocked gifts list
+    final oldGiftsKey = 'unlocked_gifts_${guestId}_$companionName';
+    final newGiftsKey = 'unlocked_gifts_${authenticatedId}_$companionName';
+    final gifts = prefs.getStringList(oldGiftsKey);
+    if (gifts != null) {
+      await prefs.setStringList(newGiftsKey, gifts);
+      await prefs.remove(oldGiftsKey);
+    }
+    
+    // 4. Migrate active days
+    final oldDaysKey = 'active_days_${guestId}_$companionName';
+    final newDaysKey = 'active_days_${authenticatedId}_$companionName';
+    final days = prefs.getStringList(oldDaysKey);
+    if (days != null) {
+      await prefs.setStringList(newDaysKey, days);
+      await prefs.remove(oldDaysKey);
+    }
+    
+    // 5. Migrate last chat time
+    final oldTimeKey = 'last_chat_time_${guestId}_$companionName';
+    final newTimeKey = 'last_chat_time_${authenticatedId}_$companionName';
+    final lastTime = prefs.getInt(oldTimeKey);
+    if (lastTime != null) {
+      await prefs.setInt(newTimeKey, lastTime);
+      await prefs.remove(oldTimeKey);
+    }
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -270,6 +348,7 @@ class MemoryService {
     String companionGreeting = '',
     String sceneContext = '',
     bool isPremium = false,
+    Companion? companion,
   }) async {
     try {
       final chatId = '${userId}_$companionName';
@@ -301,6 +380,7 @@ class MemoryService {
         isPremium: isPremium,
         sessionData: memory ?? {},
         chatHistory: history,
+        companion: companion,
       );
 
       if (aiReply != null) {
@@ -319,7 +399,8 @@ class MemoryService {
         // 5. Memory consolidation trigger — every 5 NEW messages
         // Uses (length - 1) % 5 so it fires correctly on message 5, 10, 15...
         // regardless of how long the history already was before this session.
-        if ((history.length - 1) % 5 == 0) {
+        final didConsolidate = (history.length - 1) % 5 == 0;
+        if (didConsolidate) {
           _consolidateMemoryInBackground(
             userId,
             companionName,
@@ -334,6 +415,7 @@ class MemoryService {
           // Updated memory will be available on the next fetchMemory() call.
           'memory': memory?['summary'],
           'diary_entries': memory?['diary_entries'] ?? [],
+          'didConsolidate': didConsolidate,
         };
       }
     } catch (e) {
@@ -348,6 +430,21 @@ class MemoryService {
   // Uses optimistic versioning to prevent stale overwrites when
   // multiple sessions are open simultaneously.
   // ─────────────────────────────────────────────────────────────
+
+  String _getMonthName(int month) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    if (month >= 1 && month <= 12) return months[month - 1];
+    return 'Jun';
+  }
+
+  String _getMonthFullName(int month) {
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    if (month >= 1 && month <= 12) return months[month - 1];
+    return 'June';
+  }
 
   Future<void> _consolidateMemoryInBackground(
     String userId,
@@ -369,6 +466,10 @@ Extract details for any of these categories where new info exists:
 - emotional_needs (comfort triggers, attachment style, fears)
 - social_context (important friends, family members, relationships)
 - lifestyle (hobbies, interests, job, daily routines)
+- shared_secrets (deep secrets, vulnerabilities, fears user shared)
+- inside_jokes (funny references, unique nicknames, recurring jokes)
+
+Additionally, identify if a significant relationship milestone occurred during this conversation segment. A milestone can be: sharing a dream, having a bad day, sharing a secret, having a birthday, reaching deep trust, first deep conversation. If so, return it under the key "new_milestone" as an object containing: "desc" (a short 1-sentence poetic summary from the AI's perspective of the event), and "icon" (a single emoji representing the event). Example: {"desc": "You shared your dream of opening a bakery.", "icon": "🥐"}. If no milestone occurred, omit this key.
 
 Rules:
 - Only include categories where something NEW was learned in this conversation.
@@ -404,6 +505,7 @@ ${jsonEncode(recentForDiary)}
 
         // Parse profile JSON
         Map<String, dynamic> updatedProfile = {};
+        Map<String, dynamic>? decodedJson;
         if (responseProfile != null) {
           try {
             final jsonStart = responseProfile.indexOf('{');
@@ -411,15 +513,42 @@ ${jsonEncode(recentForDiary)}
             if (jsonStart != -1 && jsonEnd != -1) {
               final jsonStr = responseProfile.substring(jsonStart, jsonEnd + 1);
               final decoded = jsonDecode(jsonStr);
-              if (decoded is Map && decoded.containsKey('user_profile')) {
-                updatedProfile = Map<String, dynamic>.from(decoded['user_profile']);
-              } else if (decoded is Map) {
-                updatedProfile = Map<String, dynamic>.from(decoded);
+              if (decoded is Map) {
+                decodedJson = Map<String, dynamic>.from(decoded);
+                if (decodedJson.containsKey('user_profile')) {
+                  updatedProfile = Map<String, dynamic>.from(decodedJson['user_profile']);
+                } else {
+                  updatedProfile = decodedJson;
+                }
               }
             }
           } catch (e) {
             print('Error parsing profile JSON: $e');
           }
+        }
+
+        // Check for new milestone event
+        final List<dynamic> journeyEvents = List.from(currentMemory['summary']?['journey_events'] ?? []);
+        if (decodedJson != null && decodedJson.containsKey('new_milestone')) {
+          final milestoneData = decodedJson['new_milestone'];
+          if (milestoneData is Map && milestoneData.containsKey('desc')) {
+            final String desc = milestoneData['desc'] ?? '';
+            final String icon = milestoneData['icon'] ?? '🌱';
+            if (desc.isNotEmpty) {
+              final now = DateTime.now();
+              final String monthYearStr = "${_getMonthFullName(now.month)} ${now.year}";
+              final exists = journeyEvents.any((e) => e['desc'] == desc);
+              if (!exists) {
+                journeyEvents.add({
+                  'day': now.day,
+                  'month_year': monthYearStr,
+                  'desc': desc,
+                  'icon': icon,
+                });
+              }
+            }
+          }
+          updatedProfile.remove('new_milestone');
         }
 
         // Merge updated facts into existing profile with timestamp per key
@@ -472,9 +601,22 @@ ${jsonEncode(recentForDiary)}
           }
         }
 
+        final String connectionDate = currentMemory['summary']?['first_connected_at'] ?? DateTime.now().toIso8601String();
+
         final updatedSummary = {
           ...currentMemory['summary'] ?? {},
           'user_profile': existingProfile,
+          'journey_events': journeyEvents.isEmpty
+              ? [
+                  {
+                    'day': DateTime.now().day,
+                    'month_year': "${_getMonthFullName(DateTime.now().month)} ${DateTime.now().year}",
+                    'desc': 'We established our first connection.',
+                    'icon': '🌱',
+                  }
+                ]
+              : journeyEvents,
+          'first_connected_at': connectionDate,
         };
 
         // Optimistic versioning — read current version before writing

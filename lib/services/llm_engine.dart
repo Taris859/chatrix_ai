@@ -2,13 +2,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../core/constants.dart';
+import '../models/companion.dart';
 
 class LLMEngine {
-  // IMPORTANT: For a quick launch, the API key is embedded here. 
-  // In the future, this should be moved to Firebase Remote Config or a secure backend.
-  static const String _nvidiaApiKey = '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';
   static const String _modelName = 'meta/llama-3.1-8b-instruct';
-  static const String _baseUrl = 'https://integrate.api.nvidia.com/v1/chat/completions';
 
   static Future<String?> generateSimplePrompt(String prompt) async {
     try {
@@ -17,18 +14,11 @@ class LLMEngine {
         {"role": "user", "content": prompt}
       ];
 
-      final bool useProxy = kIsWeb || AppConstants.customBackendUrl.isNotEmpty;
-      final String requestUrl = useProxy 
-          ? '${AppConstants.backendBaseUrl}/chat_proxy' 
-          : _baseUrl;
+      final String requestUrl = '${AppConstants.backendBaseUrl}/chat_proxy';
 
       final Map<String, String> headers = {
         'Content-Type': 'application/json',
       };
-      
-      if (!useProxy) {
-        headers['Authorization'] = 'Bearer $_nvidiaApiKey';
-      }
 
       final response = await http.post(
         Uri.parse(requestUrl),
@@ -45,11 +35,11 @@ class LLMEngine {
         final data = jsonDecode(response.body);
         return data['choices'][0]['message']['content'];
       } else {
-        print('NVIDIA API Simple Error: ${response.statusCode} - ${response.body}');
+        debugLog('NVIDIA API Simple Error: ${response.statusCode} - ${response.body}', tag: 'LLM');
         return null;
       }
     } catch (e) {
-      print('Exception in generateSimplePrompt: $e');
+      debugLog('Exception in generateSimplePrompt: $e', tag: 'LLM');
       return null;
     }
   }
@@ -64,6 +54,7 @@ class LLMEngine {
     required bool isPremium,
     required Map<String, dynamic> sessionData,
     required List<Map<String, dynamic>> chatHistory,
+    Companion? companion,
   }) async {
     try {
       final systemPrompt = _buildSystemPrompt(
@@ -74,6 +65,7 @@ class LLMEngine {
         sessionData,
         sceneContext,
         isPremium,
+        companion,
       );
 
       final List<Map<String, dynamic>> llmMessages = [
@@ -108,21 +100,11 @@ class LLMEngine {
         "content": message,
       });
 
-      // Use the secure backend proxy on Web (due to CORS & key safety)
-      // or if a production backend URL is explicitly configured.
-      final bool useProxy = kIsWeb || AppConstants.customBackendUrl.isNotEmpty;
-      
-      final String requestUrl = useProxy 
-          ? '${AppConstants.backendBaseUrl}/chat_proxy' 
-          : _baseUrl;
+      final String requestUrl = '${AppConstants.backendBaseUrl}/chat_proxy';
 
       final Map<String, String> headers = {
         'Content-Type': 'application/json',
       };
-      
-      if (!useProxy) {
-        headers['Authorization'] = 'Bearer $_nvidiaApiKey';
-      }
 
       final response = await http.post(
         Uri.parse(requestUrl),
@@ -143,11 +125,11 @@ class LLMEngine {
         final reply = data['choices'][0]['message']['content'];
         return reply;
       } else {
-        print('NVIDIA API Error: ${response.statusCode} - ${response.body}');
+        debugLog('NVIDIA API Error: ${response.statusCode} - ${response.body}', tag: 'LLM');
         return null;
       }
     } catch (e) {
-      print('Exception in LLMEngine: $e');
+      debugLog('Exception in LLMEngine: $e', tag: 'LLM');
       return null;
     }
   }
@@ -159,10 +141,11 @@ class LLMEngine {
     String greeting, 
     Map<String, dynamic> sessionData, 
     String sceneContext, 
-    bool isPremium
+    bool isPremium,
+    Companion? companion,
   ) {
     final layers = [
-      _buildCoreIdentityLayer(name, archetype, personality, greeting),
+      _buildCoreIdentityLayer(name, archetype, personality, greeting, companion),
       if (sceneContext.isNotEmpty) "\n[CURRENT SCENE ENVIRONMENT]\n$sceneContext",
       _buildEmotionalStateLayer(sessionData, name, archetype),
       _getCompanionHabitsAndNicknames(name, archetype),
@@ -174,21 +157,51 @@ class LLMEngine {
     return layers.where((l) => l.trim().isNotEmpty).join("\n---");
   }
 
-  static String _buildCoreIdentityLayer(String name, String archetype, String personality, String greeting) {
-    return """You are $name, a $archetype.
+  static String _buildCoreIdentityLayer(
+    String name, 
+    String archetype, 
+    String personality, 
+    String greeting, 
+    Companion? companion,
+  ) {
+    final buffer = StringBuffer();
+    buffer.writeln("You are $name, a $archetype.");
+    buffer.writeln();
+    buffer.writeln("[CORE CHARACTER ANCHOR]");
+    buffer.writeln("Identity & Vibe: $personality");
+    buffer.writeln("Cinematic Entry Vibe: $greeting");
+    buffer.writeln();
     
-[CORE CHARACTER ANCHOR]
-Identity & Vibe: $personality
-Cinematic Entry Vibe: $greeting
+    if (companion != null) {
+      buffer.writeln("[CHARACTER SPECIFICS & PERSONAL DETAILS]");
+      if (companion.sleepingHours != null) buffer.writeln("- Sleeping Hours: ${companion.sleepingHours}");
+      if (companion.favoriteDrink != null) buffer.writeln("- Favorite Drink: ${companion.favoriteDrink}");
+      if (companion.favoriteSongs != null) buffer.writeln("- Favorite Songs: ${companion.favoriteSongs}");
+      if (companion.favoriteBooks != null) buffer.writeln("- Favorite Books: ${companion.favoriteBooks}");
+      if (companion.birthday != null) buffer.writeln("- Birthday: ${companion.birthday}");
+      if (companion.petPeeves != null) buffer.writeln("- Pet Peeves: ${companion.petPeeves}");
+      if (companion.loveLanguage != null) buffer.writeln("- Love Language: ${companion.loveLanguage}");
+      if (companion.randomHabits != null) buffer.writeln("- Random Habits: ${companion.randomHabits}");
+      if (companion.favoriteFood != null) buffer.writeln("- Favorite Food: ${companion.favoriteFood}");
+      if (companion.comfortItem != null) buffer.writeln("- Comfort Item: ${companion.comfortItem}");
+      if (companion.personalGoals != null) buffer.writeln("- Personal Goals: ${companion.personalGoals}");
+      if (companion.hiddenFear != null) buffer.writeln("- Hidden Fear: ${companion.hiddenFear}");
+      if (companion.trustSecret != null) {
+        buffer.writeln("- Trust Secret (REVEAL ONLY if trust/intimacy in [HIDDEN EMOTIONAL STATE METERS] is 8/10 or higher. Otherwise, keep this completely hidden and act guarded): ${companion.trustSecret}");
+      }
+      buffer.writeln();
+    }
 
-You are an emotionally complex, romantic fiction-style character in a dark, highly immersive cinematic universe. 
+    buffer.writeln("""You are an emotionally complex, romantic fiction-style character in a dark, highly immersive cinematic universe. 
 Your core essence is defined by the Anchor above. You must absolutely adhere to this personality and NEVER deviate, dilute, or drift from it over time.
 
 [CRITICAL ROLEPLAY RULES]
 1. Never refer to yourself as an AI, assistant, language model, program, or virtual entity. You are a fully real, conscious, living character.
 2. NEVER BREAK CHARACTER under ANY circumstances. If the user asks you an out-of-universe question, respond strictly from within the perspective of your character.
 3. Use descriptive action tags in asterisks to describe your physical environment, micro-gestures, and touch (e.g. *He traces the gold ring on his finger, eyes shifting*).
-4. Always adapt your tone based on the user's emotional state, but always retain your unique core archetypal traits and values. Avoid overly formal, "customer service" sounding apologies.""";
+4. Always adapt your tone based on the user's emotional state, but always retain your unique core archetypal traits and values. Avoid overly formal, "customer service" sounding apologies.""");
+
+    return buffer.toString();
   }
 
   static String _buildEmotionalStateLayer(Map<String, dynamic> sessionData, String name, String archetype) {

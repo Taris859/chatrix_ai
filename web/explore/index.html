@@ -18,7 +18,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Character AI Alternative | Browse AI Girlfriends, AI Friends & Unfiltered AI Characters – Chatrix</title>
   <meta name="description" content="The best Character AI alternative — browse hundreds of AI girlfriends, AI companions, dark romance, and roleplay AI with no filters and real memory. Better than Janitor AI, Candy AI, Replika. Free AI chat.">
-  <meta name="keywords" content="character ai alternative, janitor ai alternative, best character ai alternative, ai girlfriend app free, AI girlfriend no filter, unfiltered AI characters, AI roleplay characters, crushon ai alternative, candy ai alternative, spicychat alternative, kindroid alternative, nomi ai alternative, replika alternative, AI boyfriend app, dark romance AI, AI companion browse, emotional AI characters, free AI character chat, best AI chatbot 2025, AI girlfriend India, AI companion India, c.ai alternative, c.ai no filter, c.ai chat, character.ai alternative, character.ai no filter, janitorai alternative, janitorai no filter, crushon.ai alternative, crushon.ai no filter, candy.ai alternative, spicy ai, spicy ai alternative, yodayo alternative, dopple ai alternative, dopple.ai alternative, linky ai alternative, linky alternative, talkie alternative, talkie ai alternative, sillytavern alternative, silly tavern, chub ai alternative, chub.ai alternative, venus chub, joyland ai alternative, joyland.ai alternative, moescape alternative, sakura ai alternative, poly ai alternative, poly.ai alternative, figgs ai alternative, muah ai alternative, uncensored ai chat free, free uncensored ai chat, virtual girlfriend simulator, virtual boyfriend simulator, ai relationship simulator, ai romance chat, otome game ai chat, comfort character ai chat, roleplay chatbot free, nsfw roleplay ai no filter, anime gf ai chat, tsundere ai chat, yandere ai chat, filter free ai chatbot, filter free character ai, talk to fictional characters, interactive ai roleplay, ai texting app, virtual partner ai">
+  <meta name="keywords" content="character ai alternative, janitor ai alternative, best character ai alternative, ai girlfriend app free, AI girlfriend no filter, unfiltered AI characters, AI roleplay characters, crushon ai alternative, candy ai alternative, spicychat alternative, kindroid alternative, nomi ai alternative, replika alternative, AI boyfriend app, dark romance AI, AI companion browse, emotional AI characters, free AI character chat, best AI chatbot 2026, AI girlfriend India, AI companion India, c.ai alternative, c.ai no filter, c.ai chat, character.ai alternative, character.ai no filter, janitorai alternative, janitorai no filter, crushon.ai alternative, crushon.ai no filter, candy.ai alternative, spicy ai, spicy ai alternative, yodayo alternative, dopple ai alternative, dopple.ai alternative, linky ai alternative, linky alternative, talkie alternative, talkie ai alternative, sillytavern alternative, silly tavern, chub ai alternative, chub.ai alternative, venus chub, joyland ai alternative, joyland.ai alternative, moescape alternative, sakura ai alternative, poly ai alternative, poly.ai alternative, figgs ai alternative, muah ai alternative, uncensored ai chat free, free uncensored ai chat, virtual girlfriend simulator, virtual boyfriend simulator, ai relationship simulator, ai romance chat, otome game ai chat, comfort character ai chat, roleplay chatbot free, nsfw roleplay ai no filter, anime gf ai chat, tsundere ai chat, yandere ai chat, filter free ai chatbot, filter free character ai, talk to fictional characters, interactive ai roleplay, ai texting app, virtual partner ai">
   <meta name="author" content="Chatrix AI">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://chatrix.space/explore">
@@ -136,6 +136,13 @@
   </div>
   <script>
     (function(){
+      var botPattern = /bot|googlebot|crawler|spider|robot|crawling|lighthouse|adsbot|bingbot|yandex|baidu|duckduck/i;
+      if (botPattern.test(navigator.userAgent)) {
+        console.log("Search bot detected. Skipping redirect.");
+        var overlay = document.getElementById('redirect-overlay');
+        if (overlay) overlay.style.display = 'none';
+        return;
+      }
       var overlay = document.getElementById('redirect-overlay');
       setTimeout(function(){
         overlay.classList.add('fade-out');

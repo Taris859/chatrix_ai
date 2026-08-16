@@ -9,6 +9,7 @@ import 'dart:math';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/theme.dart';
 import 'chat_screen.dart';
+import 'companion_profile_screen.dart';
 import '../services/firestore_repository.dart';
 import '../models/companion.dart';
 import '../auth/auth_provider.dart';
@@ -16,6 +17,8 @@ import 'premium/subscription_screen.dart';
 import 'creation/ai_creation_studio.dart';
 import 'profile/profile_screen.dart';
 import 'widgets/creator_name_widget.dart';
+import '../auth/auth_service.dart';
+import '../core/constants.dart';
 
 /// Highly stylized Discovery screen inspired by the premium Chai platform.
 class HomeScreen extends ConsumerStatefulWidget {
@@ -29,6 +32,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
   String _selectedGender = "All";
+  String? _selectedCategory;
 
   @override
   void dispose() {
@@ -64,6 +68,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Future<void> _deleteCompanion(Companion companion) async {
     final prefs = await SharedPreferences.getInstance();
     final List<String> localList = prefs.getStringList('local_custom_companions') ?? [];
+    final currentUserId = AuthService().currentUserId;
     
     bool isLocal = false;
     for (var raw in localList) {
@@ -76,7 +81,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       } catch (e) {}
     }
 
-    // Bypassed creator check: anyone can delete any AI, even if created by others.
+    // Authorization check: only allow deletion of own creations
+    if (!isLocal) {
+      final isCreator = currentUserId != null && companion.creatorId == currentUserId;
+      if (!isCreator) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("You can only delete companions you've created.", style: const TextStyle(color: Colors.white)),
+              backgroundColor: ChatrixTheme.errorRose,
+            )
+          );
+        }
+        return;
+      }
+    }
 
     final confirm = await showDialog<bool>(
       context: context,
@@ -110,7 +129,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           try {
             await FirebaseFirestore.instance.collection('ai_companions').doc(companion.id).delete();
           } catch (e) {
-            print("Error deleting from Firestore: $e");
+            debugLog("Error deleting from Firestore: $e", tag: "HomeScreen");
           }
         }
       }
@@ -136,10 +155,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       body: Container(
         decoration: ChatrixTheme.cinematicBackground,
         child: SafeArea(
-          child: companionsAsync.when(
-            data: (companions) => _buildContent(context, companions),
-            loading: () => _buildLoadingState(),
-            error: (err, stack) => _buildErrorState(context, err),
+          child: Center(
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 1100),
+              child: companionsAsync.when(
+                data: (companions) => _buildContent(context, companions),
+                loading: () => _buildLoadingState(),
+                error: (err, stack) => _buildErrorState(context, err),
+              ),
+            ),
           ),
         ),
       ),
@@ -193,6 +217,71 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ).toList();
     }
 
+    if (_selectedCategory != null) {
+      isFiltering = true;
+      final category = _selectedCategory!.toLowerCase();
+      filteredCompanions = filteredCompanions.where((c) {
+        final name = c.name.toLowerCase();
+        final arch = c.archetype.toLowerCase();
+        final pers = c.personality.toLowerCase();
+        final tags = c.tags.map((t) => t.toLowerCase()).toList();
+        
+        if (category == 'romance') {
+          return tags.contains('romantic') || 
+                 tags.contains('dark-romance') || 
+                 pers.contains('romantic') || 
+                 pers.contains('flirting') || 
+                 pers.contains('boyfriend') || 
+                 pers.contains('girlfriend') || 
+                 pers.contains('husband') || 
+                 pers.contains('wife');
+        } else if (category == 'comfort') {
+          return tags.contains('comfort') || 
+                 tags.contains('gentle') || 
+                 pers.contains('comfort') || 
+                 pers.contains('gentle') || 
+                 pers.contains('warm') || 
+                 pers.contains('nurtur') || 
+                 pers.contains('care');
+        } else if (category == 'funny') {
+          return tags.contains('funny') || 
+                 tags.contains('fun') || 
+                 pers.contains('funny') || 
+                 pers.contains('humor') || 
+                 pers.contains('joke') || 
+                 pers.contains('sarcastic') || 
+                 pers.contains('banter');
+        } else if (category == 'smart') {
+          return pers.contains('smart') || 
+                 pers.contains('intelligent') || 
+                 pers.contains('genius') || 
+                 pers.contains('professor') || 
+                 pers.contains('academic') || 
+                 pers.contains('hacker');
+        } else if (category == 'story') {
+          return tags.contains('dark-romance') || 
+                 tags.contains('mysterious') || 
+                 pers.contains('roleplay') || 
+                 pers.contains('story') || 
+                 pers.contains('fantasy') || 
+                 pers.contains('prince') || 
+                 pers.contains('lore');
+        } else if (category == 'chaos') {
+          return tags.contains('dangerous') || 
+                 tags.contains('toxic') || 
+                 tags.contains('chaotic') || 
+                 pers.contains('dangerous') || 
+                 pers.contains('toxic') || 
+                 pers.contains('jealous') || 
+                 pers.contains('possessive') || 
+                 pers.contains('yandere') || 
+                 pers.contains('obsessive') || 
+                 pers.contains('chaotic');
+        }
+        return false;
+      }).toList();
+    }
+
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
       slivers: [
@@ -205,6 +294,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               _buildTopLogoRow(context),
               _buildSearchBar(),
               _buildGenderPills(),
+              const SizedBox(height: 12),
+              _buildCategoryPills(),
               const SizedBox(height: 16),
             ],
           ),
@@ -242,11 +333,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             sliver: SliverGrid(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 0.65,
-                mainAxisSpacing: 14,
-                crossAxisSpacing: 14,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: MediaQuery.of(context).size.width > 1000 
+                    ? 4 
+                    : (MediaQuery.of(context).size.width > 700 ? 3 : 2),
+                childAspectRatio: 0.66,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
               ),
               delegate: SliverChildBuilderDelegate(
                 (ctx, index) => _buildChaiPortraitCard(ctx, filteredCompanions[index], index),
@@ -342,7 +435,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           const SizedBox(height: 16),
           SizedBox(
-            height: 280, // Height for the portrait cards
+            height: 200, // Height for the portrait cards
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
@@ -350,7 +443,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               itemCount: companions.length,
               itemBuilder: (context, index) {
                 return Container(
-                  width: 170, // Fixed width for horizontal scrolling cards
+                  width: 132, // Fixed width for horizontal scrolling cards
                   margin: const EdgeInsets.symmetric(horizontal: 4),
                   child: _buildChaiPortraitCard(context, companions[index], index),
                 );
@@ -582,275 +675,103 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  Widget _buildCategoryPills() {
+    final List<Map<String, String>> categories = [
+      {"name": "Romance", "emoji": "❤️"},
+      {"name": "Comfort", "emoji": "🫂"},
+      {"name": "Funny", "emoji": "😂"},
+      {"name": "Smart", "emoji": "🧠"},
+      {"name": "Story", "emoji": "🎭"},
+      {"name": "Chaos", "emoji": "😈"},
+    ];
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 20, bottom: 8),
+          child: Text(
+            "WHAT ARE YOU LOOKING FOR TODAY?",
+            style: GoogleFonts.inter(
+              color: Colors.white30,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.5,
+            ),
+          ),
+        ),
+        SizedBox(
+          height: 42,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: categories.length,
+            itemBuilder: (context, index) {
+              final cat = categories[index];
+              final catName = cat["name"]!;
+              final emoji = cat["emoji"]!;
+              final isSelected = _selectedCategory == catName;
+              
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    if (isSelected) {
+                      _selectedCategory = null; // Toggle off
+                    } else {
+                      _selectedCategory = catName; // Toggle on
+                    }
+                  });
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isSelected ? Colors.white : ChatrixTheme.surface.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isSelected ? Colors.white : Colors.white.withOpacity(0.08),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(emoji, style: const TextStyle(fontSize: 13)),
+                      const SizedBox(width: 6),
+                      Text(
+                        catName,
+                        style: GoogleFonts.inter(
+                          color: isSelected ? Colors.black : Colors.white70,
+                          fontSize: 12,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
   // ═══════════════════════════════════════════
   // Chai Portrait Card Layout
   // ═══════════════════════════════════════════
   Widget _buildChaiPortraitCard(BuildContext context, Companion companion, int index) {
-    final hasImg = companion.imagePath != null;
     final activity = _getSeededActivity(companion.id);
-    final cleanDesc = _getCleanDescription(companion.greeting);
-
-    final isMidnight = companion.tags.contains('midnight-only');
-    final isRain = companion.tags.contains('rain-only');
-    final isLegendary = companion.tags.contains('legendary');
-
-    List<BoxShadow> shadows = [
-      BoxShadow(
-        color: isMidnight 
-            ? const Color(0xFF6200EA).withOpacity(0.6) 
-            : (isLegendary ? ChatrixTheme.champagneGold.withOpacity(0.4) : Colors.black.withOpacity(0.2)),
-        blurRadius: (isMidnight || isLegendary) ? 20 : 10,
-        spreadRadius: (isMidnight || isLegendary) ? 2 : 0,
-        offset: const Offset(0, 4),
+    return CompanionCard(
+      companion: companion,
+      index: index,
+      activity: activity,
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => CompanionProfileScreen(companion: companion)),
       ),
-    ];
-
-    Color borderColor = Colors.white.withOpacity(0.05);
-    if (isLegendary) borderColor = ChatrixTheme.champagneGold.withOpacity(0.6);
-    else if (isMidnight) borderColor = const Color(0xFF6200EA).withOpacity(0.5);
-    else if (isRain) borderColor = Colors.lightBlueAccent.withOpacity(0.3);
-
-    return RepaintBoundary(
-      child: GestureDetector(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => ChatScreen(companion: companion)),
-        ),
-        onLongPress: () => _deleteCompanion(companion),
-        child: Container(
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            color: ChatrixTheme.surface.withOpacity(0.18),
-            border: Border.all(color: borderColor, width: (isLegendary || isMidnight) ? 1.5 : 1),
-            boxShadow: shadows,
-          ),
-          child: Stack(
-            children: [
-               // 1. Background image or dynamic visual gradient
-              Positioned.fill(
-                child: companion.customImageUrl != null && companion.customImageUrl!.isNotEmpty
-                    ? (companion.customImageUrl!.startsWith('data:image')
-                        ? Image.memory(
-                            base64Decode(companion.customImageUrl!.split(',').last),
-                            fit: BoxFit.cover,
-                          )
-                        : Image.network(
-                            companion.customImageUrl!,
-                            fit: BoxFit.cover,
-                          ))
-                    : (hasImg
-                        ? Image.asset(
-                            companion.imagePath!,
-                            fit: BoxFit.cover,
-                          )
-                        : Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  companion.themeColor.withOpacity(0.28),
-                                  Colors.black,
-                                ],
-                              ),
-                            ),
-                            child: Center(
-                              child: Text(
-                                companion.initials,
-                                style: GoogleFonts.playfairDisplay(
-                                  color: Colors.white.withOpacity(0.04),
-                                  fontSize: 90,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 2.0,
-                                ),
-                              ),
-                            ),
-                          )),
-              ),
-
-              // 2. Mist overlay for Rain Only AIs
-              if (isRain)
-                Positioned.fill(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.white.withOpacity(0.2),
-                          Colors.transparent,
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-
-              // 3. Linear Black Gradient Fading to Black at the Bottom
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.transparent,
-                        isMidnight ? Colors.deepPurple.withOpacity(0.35) : Colors.black.withOpacity(0.35),
-                        Colors.black.withOpacity(0.95),
-                      ],
-                      stops: const [0.0, 0.45, 1.0],
-                    ),
-                  ),
-                ),
-              ),
-
-              // 4. Creator Capsule (Top Left)
-              Positioned(
-                top: 12,
-                left: 12,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.4),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white.withOpacity(0.05)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 14,
-                        height: 14,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: companion.themeColor.withOpacity(0.8),
-                        ),
-                        child: Center(
-                          child: Text(
-                            companion.initials[0],
-                            style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      companion.creatorId == null
-                          ? Text(
-                              "Official Companion",
-                              style: GoogleFonts.inter(
-                                color: Colors.white70,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            )
-                          : CreatorNameWidget(
-                              creatorId: companion.creatorId!,
-                              style: GoogleFonts.inter(
-                                color: Colors.white70,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w500,
-                                decoration: TextDecoration.underline,
-                              ),
-                            ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // 4. Slanted PRO Ribbon (Top Right)
-              if (companion.isPremium)
-                Positioned(
-                  top: 10,
-                  right: -20,
-                  child: Transform.rotate(
-                    angle: 0.785398, // 45 degrees
-                    child: Container(
-                      width: 76,
-                      alignment: Alignment.center,
-                      padding: const EdgeInsets.symmetric(vertical: 3),
-                      color: ChatrixTheme.champagneGold,
-                      child: const Text(
-                        "PRO",
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 8,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1.0,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-              // 5. Activity Pill (Bottom Left, above bottom text)
-              Positioned(
-                bottom: 84,
-                left: 12,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.55),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.white.withOpacity(0.05)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.chat_bubble_rounded,
-                        color: Colors.white54,
-                        size: 9,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        activity,
-                        style: GoogleFonts.inter(
-                          color: Colors.white70,
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // 6. Content (Bottom Panel)
-              Positioned(
-                bottom: 12,
-                left: 12,
-                right: 12,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      companion.name,
-                      style: GoogleFonts.inter(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      cleanDesc,
-                      style: GoogleFonts.inter(
-                        color: Colors.white60,
-                        fontSize: 11,
-                        height: 1.3,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ).animate().fadeIn(duration: 350.ms, delay: Duration(milliseconds: (index % 10) * 45)),
+      onLongPress: () => _deleteCompanion(companion),
     );
   }
 
@@ -858,23 +779,109 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // Loading & Error States
   // ═══════════════════════════════════════════
   Widget _buildLoadingState() {
-    return Center(
+    return SingleChildScrollView(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Image.asset(
-            'assets/logo/logo.png',
-            width: 64,
-            height: 64,
-            errorBuilder: (_, __, ___) => const SizedBox(width: 64, height: 64),
+          const SizedBox(height: 12),
+          // Logo Row skeleton
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                width: 140,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.04),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.04),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 24),
-          const CircularProgressIndicator(
-            color: ChatrixTheme.silverMist,
-            strokeWidth: 2,
+          // Search bar skeleton
+          Container(
+            height: 52,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.04),
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Gender pills skeleton
+          Row(
+            children: List.generate(4, (index) => Container(
+              width: 76,
+              height: 32,
+              margin: const EdgeInsets.only(right: 10),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.04),
+                borderRadius: BorderRadius.circular(16),
+              ),
+            )),
+          ),
+          const SizedBox(height: 16),
+          // Category pills skeleton
+          Row(
+            children: List.generate(3, (index) => Container(
+              width: 90,
+              height: 32,
+              margin: const EdgeInsets.only(right: 10),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.04),
+                borderRadius: BorderRadius.circular(16),
+              ),
+            )),
+          ),
+          const SizedBox(height: 32),
+          // Curated horizontal scrolls skeleton
+          Text(
+            "Curated Discovery",
+            style: GoogleFonts.inter(
+              color: Colors.white30,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.5,
+            ),
+          ),
+          const SizedBox(height: 16),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: MediaQuery.of(context).size.width > 1000 
+                  ? 4 
+                  : (MediaQuery.of(context).size.width > 700 ? 3 : 2),
+              childAspectRatio: 0.66,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+            ),
+            itemCount: 4,
+            itemBuilder: (context, index) {
+              return Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.03),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white.withOpacity(0.04)),
+                ),
+              );
+            },
           ),
         ],
       ),
+    ).animate(onPlay: (c) => c.repeat()).shimmer(
+      duration: 1800.ms,
+      color: Colors.white.withOpacity(0.05),
     );
   }
 
@@ -939,16 +946,324 @@ class CategoryGridScreen extends StatelessWidget {
             : GridView.builder(
                 padding: const EdgeInsets.all(16),
                 physics: const BouncingScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  childAspectRatio: 0.65,
-                  mainAxisSpacing: 14,
-                  crossAxisSpacing: 14,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: MediaQuery.of(context).size.width > 1000 
+                      ? 4 
+                      : (MediaQuery.of(context).size.width > 700 ? 3 : 2),
+                  childAspectRatio: 0.66,
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
                 ),
                 itemCount: companions.length,
                 itemBuilder: (context, index) => cardBuilder(context, companions[index], index),
               ),
       ),
     );
+  }
+}
+
+// ═══════════════════════════════════════════
+// Premium Hoverable Companion Card Widget
+// ═══════════════════════════════════════════
+class CompanionCard extends StatefulWidget {
+  final Companion companion;
+  final int index;
+  final String activity;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
+  
+  const CompanionCard({
+    Key? key,
+    required this.companion,
+    required this.index,
+    required this.activity,
+    required this.onTap,
+    required this.onLongPress,
+  }) : super(key: key);
+  
+  @override
+  State<CompanionCard> createState() => _CompanionCardState();
+}
+
+class _CompanionCardState extends State<CompanionCard> {
+  bool _isHovered = false;
+  
+  @override
+  Widget build(BuildContext context) {
+    final companion = widget.companion;
+    final hasImg = companion.imagePath != null;
+    final cleanDesc = companion.greeting.replaceAll('*', '').trim();
+
+    final isMidnight = companion.tags.contains('midnight-only');
+    final isRain = companion.tags.contains('rain-only');
+    final isLegendary = companion.tags.contains('legendary');
+
+    List<BoxShadow> shadows = [
+      BoxShadow(
+        color: _isHovered 
+            ? (isMidnight 
+                ? const Color(0xFF6200EA).withOpacity(0.8) 
+                : (isLegendary ? ChatrixTheme.champagneGold.withOpacity(0.6) : companion.themeColor.withOpacity(0.35)))
+            : (isMidnight 
+                ? const Color(0xFF6200EA).withOpacity(0.5) 
+                : (isLegendary ? ChatrixTheme.champagneGold.withOpacity(0.35) : Colors.black.withOpacity(0.2))),
+        blurRadius: _isHovered ? 25 : (isMidnight || isLegendary ? 16 : 8),
+        spreadRadius: _isHovered ? 3 : (isMidnight || isLegendary ? 1 : 0),
+        offset: const Offset(0, 4),
+      ),
+    ];
+
+    Color borderColor = Colors.white.withOpacity(_isHovered ? 0.25 : 0.05);
+    if (isLegendary) borderColor = ChatrixTheme.champagneGold.withOpacity(_isHovered ? 0.9 : 0.5);
+    else if (isMidnight) borderColor = const Color(0xFF6200EA).withOpacity(_isHovered ? 0.8 : 0.4);
+    else if (isRain) borderColor = Colors.lightBlueAccent.withOpacity(_isHovered ? 0.6 : 0.25);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        transform: Matrix4.translationValues(0, _isHovered ? -5 : 0, 0),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: ChatrixTheme.surface.withOpacity(_isHovered ? 0.28 : 0.18),
+          border: Border.all(color: borderColor, width: (isLegendary || isMidnight || _isHovered) ? 1.5 : 1),
+          boxShadow: shadows,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(19),
+          child: GestureDetector(
+            onTap: widget.onTap,
+            onLongPress: widget.onLongPress,
+            child: Stack(
+              children: [
+                // 1. Background image
+                Positioned.fill(
+                  child: companion.customImageUrl != null && companion.customImageUrl!.isNotEmpty
+                      ? (companion.customImageUrl!.startsWith('data:image')
+                          ? Image.memory(
+                              base64Decode(companion.customImageUrl!.split(',').last),
+                              fit: BoxFit.cover,
+                            )
+                          : Image.network(
+                              companion.customImageUrl!,
+                              fit: BoxFit.cover,
+                            ))
+                      : (hasImg
+                          ? Image.asset(
+                              companion.imagePath!,
+                              fit: BoxFit.cover,
+                            )
+                          : Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    companion.themeColor.withOpacity(0.28),
+                                    Colors.black,
+                                  ],
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  companion.initials,
+                                  style: GoogleFonts.playfairDisplay(
+                                    color: Colors.white.withOpacity(0.04),
+                                    fontSize: 70,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 2.0,
+                                  ),
+                                ),
+                              ),
+                            )),
+                ),
+
+                // 2. Mist overlay for Rain Only AIs
+                if (isRain)
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.white.withOpacity(0.15),
+                            Colors.transparent,
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                // 3. Linear Black Gradient Fading to Black at the Bottom
+                Positioned.fill(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          isMidnight ? Colors.deepPurple.withOpacity(0.25) : Colors.black.withOpacity(0.25),
+                          Colors.black.withOpacity(_isHovered ? 0.98 : 0.92),
+                        ],
+                        stops: const [0.0, 0.45, 1.0],
+                      ),
+                    ),
+                  ),
+                ),
+
+                // 4. Creator Capsule (Top Left)
+                Positioned(
+                  top: 10,
+                  left: 10,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.4),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.white.withOpacity(0.05)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: companion.themeColor.withOpacity(0.8),
+                          ),
+                          child: Center(
+                            child: Text(
+                              companion.initials[0],
+                              style: const TextStyle(color: Colors.white, fontSize: 6, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        companion.creatorId == null
+                            ? Text(
+                                "Official",
+                                style: GoogleFonts.inter(
+                                  color: Colors.white70,
+                                  fontSize: 7.5,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              )
+                            : CreatorNameWidget(
+                                creatorId: companion.creatorId!,
+                                style: GoogleFonts.inter(
+                                  color: Colors.white70,
+                                  fontSize: 7.5,
+                                  fontWeight: FontWeight.w500,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // 5. Slanted PRO Ribbon (Top Right)
+                if (companion.isPremium)
+                  Positioned(
+                    top: 6,
+                    right: -18,
+                    child: Transform.rotate(
+                      angle: 0.785398, // 45 degrees
+                      child: Container(
+                        width: 64,
+                        alignment: Alignment.center,
+                        padding: const EdgeInsets.symmetric(vertical: 2.5),
+                        color: ChatrixTheme.champagneGold,
+                        child: const Text(
+                          "PRO",
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: 7.5,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                // 6. Activity Pill (Bottom Left, above bottom text)
+                Positioned(
+                  bottom: 56,
+                  left: 10,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.55),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.white.withOpacity(0.05)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.chat_bubble_rounded,
+                          color: Colors.white54,
+                          size: 7.5,
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          widget.activity,
+                          style: GoogleFonts.inter(
+                            color: Colors.white70,
+                            fontSize: 7.5,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // 7. Content (Bottom Panel)
+                Positioned(
+                  bottom: 10,
+                  left: 10,
+                  right: 10,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        companion.name,
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        cleanDesc,
+                        style: GoogleFonts.inter(
+                          color: Colors.white60,
+                          fontSize: 9.5,
+                          height: 1.25,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ).animate(target: _isHovered ? 1.0 : 0.0).scale(end: const Offset(1.025, 1.025), duration: 200.ms, curve: Curves.easeOutCubic);
   }
 }

@@ -2,44 +2,57 @@ import os
 import httpx
 from fastapi import HTTPException
 
-NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY") or "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"
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("GEMINI_KEY")
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 
 class LLMService:
     @staticmethod
+    def get_nvidia_keys() -> list[str]:
+        keys_str = os.getenv("NVIDIA_API_KEYS")
+        if keys_str:
+            return [k.strip() for k in keys_str.split(",") if k.strip()]
+        single_key = os.getenv("NVIDIA_API_KEY")
+        if single_key:
+            return [single_key.strip()]
+        return []
+
+    @staticmethod
     async def generate_response(messages: list, model_name: str = "meta/llama3-70b-instruct", is_premium: bool = False) -> str:
         # Fallback chain: Nvidia Llama -> Gemini -> DeepSeek
         errors = []
 
-        # 1. Try Nvidia Llama
-        try:
-            async with httpx.AsyncClient() as client:
-                headers = {
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {NVIDIA_API_KEY}"
-                }
-                payload = {
-                    "model": model_name,
-                    "messages": messages,
-                    "temperature": 0.8,
-                    "max_tokens": 512,
-                    "top_p": 1.0,
-                    "stream": False
-                }
-                response = await client.post(
-                    "https://integrate.api.nvidia.com/v1/chat/completions",
-                    json=payload,
-                    headers=headers,
-                    timeout=30.0
-                )
-                if response.status_code == 200:
-                    data = response.json()
-                    return data['choices'][0]['message']['content']
-                else:
-                    errors.append(f"Nvidia status code: {response.status_code}")
-        except Exception as e:
-            errors.append(f"Nvidia Exception: {str(e)}")
+        # 1. Try Nvidia Llama (with key rotation)
+        nvidia_keys = LLMService.get_nvidia_keys()
+        for idx, key in enumerate(nvidia_keys):
+            try:
+                async with httpx.AsyncClient() as client:
+                    headers = {
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {key}"
+                    }
+                    payload = {
+                        "model": model_name,
+                        "messages": messages,
+                        "temperature": 0.8,
+                        "max_tokens": 512,
+                        "top_p": 1.0,
+                        "stream": False
+                    }
+                    response = await client.post(
+                        "https://integrate.api.nvidia.com/v1/chat/completions",
+                        json=payload,
+                        headers=headers,
+                        timeout=30.0
+                    )
+                    if response.status_code == 200:
+                        data = response.json()
+                        return data['choices'][0]['message']['content']
+                    else:
+                        print(f"[Key Rotation LLMService] Key #{idx+1} failed with status {response.status_code}. Detail: {response.text}")
+                        errors.append(f"Nvidia Key #{idx+1} status: {response.status_code}")
+            except Exception as e:
+                print(f"[Key Rotation LLMService] Key #{idx+1} exception: {e}")
+                errors.append(f"Nvidia Key #{idx+1} Exception: {str(e)}")
 
         # 2. Try Gemini API fallback (if GEMINI_API_KEY is available)
         if GEMINI_API_KEY:

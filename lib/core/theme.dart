@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -31,6 +32,14 @@ class ChatrixTheme {
   static const Color textPrimary = Color(0xFFE8E8EB);     // Soft White
   static const Color textSecondary = Color(0xFF8A8A95);    // Muted Gray
   static const Color textTertiary = Color(0xFF5A5A65);     // Dim Gray
+
+  // ═══════════════════════════════════════════
+  // Animation Durations — Consistent motion design
+  // ═══════════════════════════════════════════
+  static const Duration animFast = Duration(milliseconds: 150);
+  static const Duration animNormal = Duration(milliseconds: 300);
+  static const Duration animSlow = Duration(milliseconds: 500);
+  static const Duration animEntrance = Duration(milliseconds: 400);
 
   // ═══════════════════════════════════════════
   // Theme Data
@@ -96,7 +105,7 @@ class ChatrixTheme {
         image: const AssetImage('assets/images/cinematic_bg.png'),
         fit: BoxFit.cover,
         colorFilter: ColorFilter.mode(
-          Colors.black.withOpacity(0.6), // Darken the image so text stays highly readable
+          Colors.black.withValues(alpha: 0.6),
           BlendMode.darken,
         ),
       ),
@@ -111,18 +120,36 @@ class ChatrixTheme {
     final accent = accentColor ?? amethyst;
     return BoxDecoration(
       borderRadius: BorderRadius.circular(borderRadius),
-      color: surface.withOpacity(0.3),
+      color: surface.withValues(alpha: 0.3),
       border: Border.all(
-        color: Colors.white.withOpacity(0.06),
+        color: Colors.white.withValues(alpha: 0.06),
         width: 1,
       ),
       gradient: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          accent.withOpacity(0.04),
+          accent.withValues(alpha: 0.04),
           Colors.transparent,
         ],
+      ),
+    );
+  }
+
+  /// Glassmorphism decoration — premium frosted glass effect
+  static BoxDecoration glassmorphism({
+    Color? tintColor,
+    double opacity = 0.08,
+    double borderRadius = 20,
+    double borderOpacity = 0.1,
+  }) {
+    final tint = tintColor ?? Colors.white;
+    return BoxDecoration(
+      borderRadius: BorderRadius.circular(borderRadius),
+      color: tint.withValues(alpha: opacity),
+      border: Border.all(
+        color: Colors.white.withValues(alpha: borderOpacity),
+        width: 1,
       ),
     );
   }
@@ -136,7 +163,7 @@ class ChatrixTheme {
         gradient: LinearGradient(
           colors: [
             Colors.transparent,
-            Colors.white.withOpacity(0.06),
+            Colors.white.withValues(alpha: 0.06),
             Colors.transparent,
           ],
         ),

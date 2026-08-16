@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import '../core/constants.dart';
 
 /// Gender classification for companion filtering
 enum CompanionGender { male, female, nonBinary }
@@ -20,20 +21,23 @@ class Companion {
   final bool isPublic;
   final String? customImageUrl;
 
+  // New character specific metadata fields
+  final String? sleepingHours;
+  final String? favoriteDrink;
+  final String? favoriteSongs;
+  final String? favoriteBooks;
+  final String? birthday;
+  final String? petPeeves;
+  final String? loveLanguage;
+  final String? randomHabits;
+  final String? favoriteFood;
+  final String? comfortItem;
+  final String? personalGoals;
+  final String? hiddenFear;
+  final String? trustSecret;
+
   /// Automatically resolves asset image path if one exists
   String? get imagePath {
-    if (avatarName != null && avatarName!.isNotEmpty) {
-      return 'assets/images/$avatarName.png';
-    }
-    var parts = name.split(' ');
-    var cleanName = parts.first;
-    if (cleanName.toLowerCase() == 'dr.' || cleanName.toLowerCase() == 'professor') {
-      if (parts.length > 1) {
-        cleanName = parts[1];
-      }
-    }
-    // Also handle names with quotes like Evelyn 'Evie'
-    final normalizedName = cleanName.replaceAll("'", "").replaceAll('"', '');
     const allowedImages = [
       'Alistair', 'Aria', 'Arthur', 'Aarav', 'Bella', 'Damien',
       'Dante', 'Dimitri', 'Ethan', 'Evelyn', 'Haru', 'Iris',
@@ -41,11 +45,29 @@ class Companion {
       'Ryker', 'Seraphina', 'Valentina',
       'Kabir', 'Vihaan', 'Devansh', 'Rohan', 'Arjun', 'Samarth',
       'Aditya', 'Ishaan', 'Reyansh', 'Aryan',
+      'Lyra', 'Noah', 'Kael', 'Airi', 'Zero', 'Elise', 'Mira', 'Atlas', 'Kai', 'Ely'
     ];
+
+    String? lookupName = avatarName;
+    if (lookupName == null || lookupName.isEmpty) {
+      var parts = name.split(' ');
+      var cleanName = parts.first;
+      if (cleanName.toLowerCase() == 'dr.' || cleanName.toLowerCase() == 'professor') {
+        if (parts.length > 1) {
+          cleanName = parts[1];
+        }
+      }
+      lookupName = cleanName.replaceAll("'", "").replaceAll('"', '');
+    }
+
     for (final img in allowedImages) {
-      if (img.toLowerCase() == normalizedName.toLowerCase()) {
+      if (img.toLowerCase() == lookupName.toLowerCase()) {
         return 'assets/images/$img.png';
       }
+    }
+    
+    if (avatarName != null && avatarName!.isNotEmpty) {
+      return 'assets/images/$avatarName.png';
     }
     return null;
   }
@@ -84,7 +106,7 @@ class Companion {
             backgroundColor: Colors.grey[900],
           );
         } catch (e) {
-          print("Error parsing base64 avatar: $e");
+          debugLog("Error parsing base64 avatar: $e", tag: "Companion");
         }
       } else if (customImageUrl!.startsWith('http')) {
         return CircleAvatar(
@@ -133,10 +155,23 @@ class Companion {
     this.avatarName,
     this.isPublic = true,
     this.customImageUrl,
+    this.sleepingHours,
+    this.favoriteDrink,
+    this.favoriteSongs,
+    this.favoriteBooks,
+    this.birthday,
+    this.petPeeves,
+    this.loveLanguage,
+    this.randomHabits,
+    this.favoriteFood,
+    this.comfortItem,
+    this.personalGoals,
+    this.hiddenFear,
+    this.trustSecret,
   });
 
   factory Companion.fromFirestore(Map<String, dynamic> data, String id, {Companion? fallback}) {
-    print("Companion.fromFirestore [id=$id] - RAW DATA: $data");
+    debugLog("Companion.fromFirestore [id=$id]", tag: "Companion");
     Color color = fallback?.themeColor ?? Colors.deepPurpleAccent;
     final rawThemeColor = data['theme_color'] ?? data['ThemeColor'] ?? data['themeColor'];
     if (rawThemeColor != null) {
@@ -187,6 +222,19 @@ class Companion {
       avatarName: data['avatar_name'] ?? data['avatarName'] ?? data['image_name'] ?? fallback?.avatarName,
       isPublic: data['is_public'] ?? data['isPublic'] ?? fallback?.isPublic ?? true,
       customImageUrl: data['custom_image_url'] ?? data['customImageUrl'] ?? fallback?.customImageUrl,
+      sleepingHours: data['sleeping_hours'] ?? data['sleepingHours'] ?? fallback?.sleepingHours,
+      favoriteDrink: data['favorite_drink'] ?? data['favoriteDrink'] ?? fallback?.favoriteDrink,
+      favoriteSongs: data['favorite_songs'] ?? data['favoriteSongs'] ?? fallback?.favoriteSongs,
+      favoriteBooks: data['favorite_books'] ?? data['favoriteBooks'] ?? fallback?.favoriteBooks,
+      birthday: data['birthday'] ?? fallback?.birthday,
+      petPeeves: data['pet_peeves'] ?? data['petPeeves'] ?? fallback?.petPeeves,
+      loveLanguage: data['love_language'] ?? data['loveLanguage'] ?? fallback?.loveLanguage,
+      randomHabits: data['random_habits'] ?? data['randomHabits'] ?? fallback?.randomHabits,
+      favoriteFood: data['favorite_food'] ?? data['favoriteFood'] ?? fallback?.favoriteFood,
+      comfortItem: data['comfort_item'] ?? data['comfortItem'] ?? fallback?.comfortItem,
+      personalGoals: data['personal_goals'] ?? data['personalGoals'] ?? fallback?.personalGoals,
+      hiddenFear: data['hidden_fear'] ?? data['hiddenFear'] ?? fallback?.hiddenFear,
+      trustSecret: data['trust_secret'] ?? data['trustSecret'] ?? fallback?.trustSecret,
     );
   }
 }

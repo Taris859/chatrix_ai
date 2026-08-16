@@ -1,5 +1,5 @@
 import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 
 class AppConstants {
   /// Base URL of your secure FastAPI backend server.
@@ -28,5 +28,14 @@ class AppConstants {
     } catch (_) {}
     
     return 'http://localhost:8000';
+  }
+}
+
+/// Debug-only logger. Logs are silenced in release/profile builds.
+void debugLog(String message, {String? tag}) {
+  if (kDebugMode) {
+    final prefix = tag != null ? '[$tag] ' : '';
+    // ignore: avoid_print
+    print('$prefix$message');
   }
 }

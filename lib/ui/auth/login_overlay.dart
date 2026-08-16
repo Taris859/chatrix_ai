@@ -6,7 +6,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme.dart';
 import '../../auth/onboarding_controller.dart';
-import '../../auth/auth_provider.dart';
 
 class LoginOverlay extends ConsumerStatefulWidget {
   const LoginOverlay({super.key});
@@ -17,13 +16,6 @@ class LoginOverlay extends ConsumerStatefulWidget {
 
 class _LoginOverlayState extends ConsumerState<LoginOverlay>
     with SingleTickerProviderStateMixin {
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  bool _obscurePassword = true;
-  bool _showEmailForm = false; // collapsed by default — Google is primary
-  bool _isForgotLoading = false;
-  String? _forgotMessage;
-
   late AnimationController _glowController;
   late Animation<double> _glowAnimation;
 
@@ -44,22 +36,16 @@ class _LoginOverlayState extends ConsumerState<LoginOverlay>
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
     _glowController.dispose();
     super.dispose();
   }
 
-  Future<void> _handleAuth(int mode) async {
+  Future<void> _handleAuth() async {
     HapticFeedback.lightImpact();
-    setState(() => _forgotMessage = null);
-
-    final email = _emailController.text;
-    final password = _passwordController.text;
 
     final success = await ref
         .read(onboardingControllerProvider.notifier)
-        .handleAuth(mode, email: email, password: password);
+        .handleAuth(1); // Mode 1 is Google Sign-In
 
     if (success) {
       HapticFeedback.heavyImpact();
@@ -68,37 +54,9 @@ class _LoginOverlayState extends ConsumerState<LoginOverlay>
     }
   }
 
-  Future<void> _handleForgotPassword() async {
-    final email = _emailController.text.trim();
-    if (email.isEmpty) {
-      setState(() => _forgotMessage =
-          '⚠ Enter your email above first, then tap Forgot Password.');
-      return;
-    }
-    setState(() {
-      _isForgotLoading = true;
-      _forgotMessage = null;
-    });
-    try {
-      final authService = ref.read(authServiceProvider);
-      await authService.resetPassword(email);
-      setState(() {
-        _forgotMessage =
-            '✓ Recovery link sent to $email\nCheck your inbox (and spam folder).';
-      });
-    } catch (e) {
-      setState(() {
-        _forgotMessage = e.toString().replaceAll('Exception: ', '');
-      });
-    } finally {
-      setState(() => _isForgotLoading = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(onboardingControllerProvider);
-    final isLogin = state.isLoginMode;
 
     return Center(
       child: SingleChildScrollView(
@@ -165,31 +123,41 @@ class _LoginOverlayState extends ConsumerState<LoginOverlay>
 
                   // ── Title ─────────────────────────────────────────────
                   Text(
-                    isLogin ? "Resume Connection" : "Anchor Your Presence",
+                    "Start your first connection",
                     style: GoogleFonts.cinzel(
-                      fontSize: 21,
+                      fontSize: 19.5,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
-                      letterSpacing: 2.0,
+                      letterSpacing: 1.5,
                     ),
                     textAlign: TextAlign.center,
                   ),
 
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 20),
 
-                  Text(
-                    isLogin
-                        ? "Sign in instantly — no password needed."
-                        : "One tap to create your account and never lose this bond.",
-                    style: GoogleFonts.inter(
-                      color: Colors.white.withValues(alpha: 0.50),
-                      fontSize: 13,
-                      height: 1.5,
-                    ),
-                    textAlign: TextAlign.center,
+                   // ── Premium Conversion Checklist ──────────────────────
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildChecklistItem(
+                        icon: "✨",
+                        title: "Remembers You",
+                        subtitle: "Your companion remembers the little things over time.",
+                      ),
+                      _buildChecklistItem(
+                        icon: "💬",
+                        title: "Relationships Grow",
+                        subtitle: "Go from first hello to trusted soulmate.",
+                      ),
+                      _buildChecklistItem(
+                        icon: "🔒",
+                        title: "Private Conversations",
+                        subtitle: "Your conversations stay protected.",
+                      ),
+                    ],
                   ),
 
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 24),
 
                   // ── Error Banner ──────────────────────────────────────
                   if (state.errorMessage != null)
@@ -226,7 +194,7 @@ class _LoginOverlayState extends ConsumerState<LoginOverlay>
                         ),
                       ),
                       onPressed:
-                          state.isAuthLoading ? null : () => _handleAuth(1),
+                          state.isAuthLoading ? null : () => _handleAuth(),
                       child: state.isAuthLoading
                           ? const SizedBox(
                               height: 22,
@@ -242,9 +210,7 @@ class _LoginOverlayState extends ConsumerState<LoginOverlay>
                                 _GoogleGLogo(size: 22),
                                 const SizedBox(width: 12),
                                 Text(
-                                  isLogin
-                                      ? "Continue with Google"
-                                      : "Sign up with Google",
+                                  "Continue with Google",
                                   style: GoogleFonts.inter(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w700,
@@ -257,132 +223,17 @@ class _LoginOverlayState extends ConsumerState<LoginOverlay>
                     ),
                   ),
 
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 16),
 
                   // ── "One tap — same account each time" note ───────────
                   Text(
-                    "Your Google account = your Chatrix account.\nSign in anytime with the same email.",
+                    "Your Google account synchronizes your Chatrix profile.\nSign in anytime with the same email.",
                     style: GoogleFonts.inter(
                       color: Colors.white.withValues(alpha: 0.35),
                       fontSize: 11.5,
                       height: 1.5,
                     ),
                     textAlign: TextAlign.center,
-                  ),
-
-                  const SizedBox(height: 22),
-
-                  // ── OR divider ────────────────────────────────────────
-                  Row(
-                    children: [
-                      Expanded(
-                          child: Divider(
-                              color: Colors.white.withValues(alpha: 0.08))),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                        child: Text(
-                          "OR",
-                          style: GoogleFonts.inter(
-                            color: Colors.white.withValues(alpha: 0.25),
-                            fontSize: 11,
-                            letterSpacing: 1.0,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                          child: Divider(
-                              color: Colors.white.withValues(alpha: 0.08))),
-                    ],
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // ── Email/Password toggle ────────────────────────────
-                  GestureDetector(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      setState(() => _showEmailForm = !_showEmailForm);
-                    },
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 13),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.04),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.09),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.email_outlined,
-                            color: ChatrixTheme.bioluminescence
-                                .withValues(alpha: 0.6),
-                            size: 20,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              isLogin
-                                  ? "Use email & password instead"
-                                  : "Register with email & password",
-                              style: GoogleFonts.inter(
-                                color: Colors.white.withValues(alpha: 0.65),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                          Icon(
-                            _showEmailForm
-                                ? Icons.keyboard_arrow_up
-                                : Icons.keyboard_arrow_down,
-                            color: Colors.white.withValues(alpha: 0.3),
-                            size: 20,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // ── Collapsible Email Form ────────────────────────────
-                  AnimatedCrossFade(
-                    duration: const Duration(milliseconds: 300),
-                    crossFadeState: _showEmailForm
-                        ? CrossFadeState.showFirst
-                        : CrossFadeState.showSecond,
-                    firstChild: _buildEmailForm(state, isLogin),
-                    secondChild: const SizedBox.shrink(),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // ── Mode Toggle ───────────────────────────────────────
-                  TextButton(
-                    onPressed: () {
-                      HapticFeedback.selectionClick();
-                      setState(() {
-                        _forgotMessage = null;
-                        _showEmailForm = false;
-                      });
-                      ref
-                          .read(onboardingControllerProvider.notifier)
-                          .toggleAuthMode();
-                    },
-                    child: Text(
-                      isLogin
-                          ? "First time here? Create an account →"
-                          : "Already connected? Sign in →",
-                      style: GoogleFonts.inter(
-                        color: ChatrixTheme.bioluminescence.withValues(alpha: 0.8),
-                        fontSize: 13,
-                        decoration: TextDecoration.underline,
-                        decorationColor:
-                            ChatrixTheme.bioluminescence.withValues(alpha: 0.4),
-                      ),
-                    ),
                   ),
                 ],
               ),
@@ -393,104 +244,56 @@ class _LoginOverlayState extends ConsumerState<LoginOverlay>
     ).animate().fadeIn(duration: 700.ms).slideY(begin: 0.06, curve: Curves.easeOutCubic);
   }
 
-  // ── Email / Password expandable form ────────────────────────────────────────
-  Widget _buildEmailForm(OnboardingState state, bool isLogin) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 16),
-
-        _buildTextField(
-          controller: _emailController,
-          hint: "Email address",
-          icon: Icons.alternate_email,
-          keyboardType: TextInputType.emailAddress,
-        ),
-
-        const SizedBox(height: 12),
-
-        _buildTextField(
-          controller: _passwordController,
-          hint: "Password",
-          icon: Icons.lock_outline,
-          obscure: _obscurePassword,
-          isPassword: true,
-        ),
-
-        // ── Forgot Password ─────────────────────────────────────
-        if (isLogin)
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: _isForgotLoading ? null : _handleForgotPassword,
-              style: TextButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 4, horizontal: 0),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: _isForgotLoading
-                  ? const SizedBox(
-                      height: 14,
-                      width: 14,
-                      child: CircularProgressIndicator(
-                          color: Colors.white30, strokeWidth: 1.5),
-                    )
-                  : Text(
-                      "Forgot password?",
-                      style: GoogleFonts.inter(
-                        color: Colors.white38,
-                        fontSize: 12,
-                        decoration: TextDecoration.underline,
-                        decorationColor: Colors.white.withValues(alpha: 0.2),
-                      ),
-                    ),
+  // ── Shared Checklist Item ────────────────────────────────────────────────────
+  Widget _buildChecklistItem({
+    required String icon,
+    required String title,
+    required String subtitle,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              shape: BoxShape.circle,
+            ),
+            child: Text(
+              icon,
+              style: const TextStyle(fontSize: 14),
             ),
           ),
-
-        // ── Forgot / success message ─────────────────────────────
-        if (_forgotMessage != null)
-          _buildBanner(
-            message: _forgotMessage!,
-            isSuccess: _forgotMessage!.startsWith('✓'),
-          ).animate().fadeIn(duration: 300.ms),
-
-        const SizedBox(height: 16),
-
-        // ── Submit button ───────────────────────────────────────
-        SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: ChatrixTheme.bioluminescence,
-              foregroundColor: Colors.black,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-            onPressed: state.isAuthLoading ? null : () => _handleAuth(0),
-            child: state.isAuthLoading
-                ? const SizedBox(
-                    height: 22,
-                    width: 22,
-                    child: CircularProgressIndicator(
-                      color: Colors.black,
-                      strokeWidth: 2,
-                    ),
-                  )
-                : Text(
-                    isLogin ? "Sign In" : "Create Account",
-                    style: GoogleFonts.inter(
-                      fontSize: 15,
-                      letterSpacing: 1.0,
-                      fontWeight: FontWeight.bold,
-                    ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.2,
                   ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: GoogleFonts.inter(
+                    color: Colors.white60,
+                    fontSize: 11,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -526,56 +329,6 @@ class _LoginOverlayState extends ConsumerState<LoginOverlay>
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  // ── Text Field ──────────────────────────────────────────────────────────────
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String hint,
-    required IconData icon,
-    bool obscure = false,
-    bool isPassword = false,
-    TextInputType? keyboardType,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.38),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: TextField(
-        controller: controller,
-        obscureText: obscure,
-        keyboardType: keyboardType,
-        style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: GoogleFonts.inter(color: Colors.white30, fontSize: 14),
-          prefixIcon: Icon(
-            icon,
-            color: ChatrixTheme.bioluminescence.withValues(alpha: 0.5),
-            size: 20,
-          ),
-          suffixIcon: isPassword
-              ? IconButton(
-                  icon: Icon(
-                    obscure
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                    color: Colors.white30,
-                    size: 20,
-                  ),
-                  onPressed: () {
-                    setState(() => _obscurePassword = !_obscurePassword);
-                  },
-                )
-              : null,
-          border: InputBorder.none,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        ),
       ),
     );
   }

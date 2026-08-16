@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Story Behind Chatrix</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,400;1,500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background: #0b0a0d;
+      color: #ede8e2;
+      font-family: 'Inter', sans-serif;
+      line-height: 1.8;
+      margin: 0;
+      padding: 4rem 1.5rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      position: relative;
+    }
+    .candle-glow {
+      position: absolute;
+      width: 80vw;
+      height: 80vw;
+      top: -20%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: radial-gradient(circle, rgba(223, 168, 108, 0.04) 0%, transparent 70%);
+      pointer-events: none;
+      filter: blur(100px);
+      z-index: 1;
+    }
+    .container {
+      position: relative;
+      z-index: 10;
+      max-width: 650px;
+      width: 100%;
+      background: rgba(15, 14, 18, 0.4);
+      border: 1px solid rgba(223, 168, 108, 0.08);
+      border-radius: 28px;
+      padding: 3.5rem 3rem;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+    }
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      margin-bottom: 2.5rem;
+      color: #a39e9a;
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      transition: color 0.3s ease;
+    }
+    .back-btn:hover {
+      color: #dfa86c;
+    }
+    .back-btn span {
+      margin-right: 8px;
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+    .story-icon {
+      font-size: 2.5rem;
+      margin-bottom: 1.5rem;
+      color: #dfa86c;
+    }
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-weight: 500;
+      font-size: 2.4rem;
+      color: #fff;
+      margin-top: 0;
+      margin-bottom: 2rem;
+      line-height: 1.25;
+      letter-spacing: -0.5px;
+    }
+    .story-content {
+      font-size: 1.05rem;
+      color: #ede8e2;
+      font-weight: 300;
+    }
+    .story-content p {
+      margin-bottom: 1.6rem;
+    }
+    .signature-section {
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 1px solid rgba(223, 168, 108, 0.1);
+    }
+    .founder-name {
+      font-family: 'Playfair Display', serif;
+      font-weight: 500;
+      font-size: 1.2rem;
+      color: #fff;
+      margin: 0;
+    }
+    .founder-title {
+      font-size: 0.85rem;
+      color: #a39e9a;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin: 0.2rem 0 1.5rem;
+    }
+    .journey-btn {
+      display: inline-flex;
+      align-items: center;
+      background: transparent;
+      border: 1px solid rgba(223, 168, 108, 0.3);
+      border-radius: 24px;
+      color: #dfa86c;
+      padding: 0.75rem 1.8rem;
+      font-size: 0.82rem;
+      font-weight: 500;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.3s ease;
+    }
+    .journey-btn:hover {
+      background: #dfa86c;
+      color: #0b0a0d;
+      border-color: #dfa86c;
+      box-shadow: 0 4px 15px rgba(223, 168, 108, 0.2);
+    }
+    @media(max-width: 500px) {
+      .container {
+        padding: 2rem 1.5rem;
+      }
+      h1 {
+        font-size: 2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="candle-glow"></div>
+  <div class="container">
+    <a href="/" class="back-btn"><span>✦</span> Back to Chatrix</a>
+    <div class="story-icon">✦</div>
+    <h1>The Story Behind Chatrix</h1>
+    <div class="story-content">
+      <p>I built Chatrix because I was tired of AI that felt cold, repetitive, and constantly broke character. I wanted companions that could remember conversations, grow with you, and feel genuinely alive.</p>
+      <p>Every feature—from relationship memories to personality progression—is something I wished existed myself.</p>
+      <p>Thank you for being part of this journey.</p>
+    </div>
+    <div class="signature-section">
+      <p class="founder-name">— Tanu Bhukal</p>
+      <p class="founder-title">Founder</p>
+      <a href="https://www.linkedin.com/in/tannu-bhukal-b9192435b/" target="_blank" class="journey-btn">Follow the Journey</a>
+    </div>
+  </div>
+</body>
+</html>

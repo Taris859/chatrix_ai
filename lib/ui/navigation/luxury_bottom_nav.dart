@@ -12,14 +12,50 @@ import '../../core/theme.dart';
 import '../../services/firestore_repository.dart';
 import '../../models/companion.dart';
 import '../creation/ai_creation_studio.dart';
+import '../creation/creator_dashboard_screen.dart';
 import '../../auth/auth_service.dart';
 import '../../ui/emotional_space_registry.dart';
 import '../../ui/emotional_space_screen.dart';
 import '../../memory/memory_service.dart';
+import '../../core/constants.dart';
 
 
 // Navigation state provider
 final navigationIndexProvider = StateProvider<int>((ref) => 0);
+
+// Reactive provider for tracking recent conversation history list
+final recentChatsProvider = StateNotifierProvider<RecentChatsNotifier, List<String>>((ref) {
+  return RecentChatsNotifier();
+});
+
+class RecentChatsNotifier extends StateNotifier<List<String>> {
+  RecentChatsNotifier() : super([]) {
+    load();
+  }
+
+  Future<void> load() async {
+    final prefs = await SharedPreferences.getInstance();
+    state = prefs.getStringList('recent_chats') ?? [];
+  }
+
+  Future<void> add(String id) async {
+    final prefs = await SharedPreferences.getInstance();
+    List<String> list = prefs.getStringList('recent_chats') ?? [];
+    list.remove(id);
+    list.insert(0, id);
+    await prefs.setStringList('recent_chats', list);
+    state = list;
+  }
+
+  Future<void> remove(String id) async {
+    final prefs = await SharedPreferences.getInstance();
+    List<String> list = prefs.getStringList('recent_chats') ?? [];
+    list.remove(id);
+    await prefs.setStringList('recent_chats', list);
+    state = list;
+  }
+}
+
 class LuxuryBottomNav extends ConsumerStatefulWidget {
   const LuxuryBottomNav({Key? key}) : super(key: key);
 
@@ -43,24 +79,34 @@ class _LuxuryBottomNavState extends ConsumerState<LuxuryBottomNav> {
       await prefs.remove('pending_companion_id');
       try {
         final companionsList = await ref.read(companionsProvider.future);
-        final companion = companionsList.firstWhere(
-          (c) => c.id == companionId || c.id.toLowerCase() == companionId.toLowerCase(),
-          orElse: () => companionsList.firstWhere(
-            (c) => c.name.toLowerCase().replaceAll(' ', '-') == companionId.toLowerCase().replaceAll(' ', '-'),
-            orElse: () => null as dynamic,
-          ),
-        );
-
-        if (companion != null) {
-          if (mounted) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => ChatScreen(companion: companion)),
-            );
+        Companion? companion;
+        
+        // Try exact ID match first
+        for (final c in companionsList) {
+          if (c.id == companionId || c.id.toLowerCase() == companionId.toLowerCase()) {
+            companion = c;
+            break;
           }
         }
+        
+        // Fallback: try name-based match
+        if (companion == null) {
+          for (final c in companionsList) {
+            if (c.name.toLowerCase().replaceAll(' ', '-') == companionId.toLowerCase().replaceAll(' ', '-')) {
+              companion = c;
+              break;
+            }
+          }
+        }
+
+        if (companion != null && mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => ChatScreen(companion: companion!)),
+          );
+        }
       } catch (e) {
-        print("Error handling pending companion navigation: $e");
+        debugLog("Error handling pending companion navigation: $e", tag: "Nav");
       }
     }
   }
@@ -206,40 +252,21 @@ class ChatsScreen extends ConsumerStatefulWidget {
 }
 
 class _ChatsScreenState extends ConsumerState<ChatsScreen> {
-  List<String> _recentChats = [];
-  bool _isLoadingRecent = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadRecentChats();
-  }
-
-  Future<void> _loadRecentChats() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _recentChats = prefs.getStringList('recent_chats') ?? [];
-      _isLoadingRecent = false;
-    });
-  }
 
   Future<void> _deleteChat(Companion companion) async {
-    final prefs = await SharedPreferences.getInstance();
     final userId = AuthService().currentUserId ?? "guest_123";
     
     // 1. Delete permanently from Firestore and local cache
     await MemoryService().deleteChatPermanently(userId, companion.name);
 
-    // 2. Remove companion from recent_chats list
-    setState(() {
-      _recentChats.remove(companion.id);
-    });
-    await prefs.setStringList('recent_chats', _recentChats);
+    // 2. Remove companion from recent_chats list via provider
+    await ref.read(recentChatsProvider.notifier).remove(companion.id);
   }
 
   @override
   Widget build(BuildContext context) {
     final companionsAsync = ref.watch(companionsProvider);
+    final recentChats = ref.watch(recentChatsProvider);
 
     return Scaffold(
       backgroundColor: ChatrixTheme.background,
@@ -275,7 +302,7 @@ class _ChatsScreenState extends ConsumerState<ChatsScreen> {
               // Chat List
               Expanded(
                 child: companionsAsync.when(
-                  data: (companions) => _buildChatList(context, companions),
+                  data: (companions) => _buildChatList(context, companions, recentChats),
                   loading: () => const Center(
                     child: CircularProgressIndicator(
                       color: ChatrixTheme.silverMist,
@@ -297,16 +324,12 @@ class _ChatsScreenState extends ConsumerState<ChatsScreen> {
     );
   }
 
-  Widget _buildChatList(BuildContext context, List<Companion> companions) {
-    if (_isLoadingRecent) {
-      return const Center(child: CircularProgressIndicator(color: ChatrixTheme.silverMist, strokeWidth: 2));
-    }
-
-    final recentCompanions = companions.where((c) => _recentChats.contains(c.id)).toList();
+  Widget _buildChatList(BuildContext context, List<Companion> companions, List<String> recentChats) {
+    final recentCompanions = companions.where((c) => recentChats.contains(c.id)).toList();
     
-    // Sort them by the order in _recentChats (most recent first)
+    // Sort them by the order in recentChats (most recent first)
     recentCompanions.sort((a, b) {
-      return _recentChats.indexOf(a.id).compareTo(_recentChats.indexOf(b.id));
+      return recentChats.indexOf(a.id).compareTo(recentChats.indexOf(b.id));
     });
 
     if (recentCompanions.isEmpty) {
@@ -411,7 +434,7 @@ class _ChatsScreenState extends ConsumerState<ChatsScreen> {
           context,
           MaterialPageRoute(builder: (_) => ChatScreen(companion: companion)),
         );
-        _loadRecentChats(); // Reload when coming back in case a new chat started
+        ref.read(recentChatsProvider.notifier).load(); // Reload in case a new chat started
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
@@ -536,91 +559,95 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   @override
   Widget build(BuildContext context) {
     final companionsAsync = ref.watch(companionsProvider);
+    final width = MediaQuery.of(context).size.width;
 
     return Scaffold(
       backgroundColor: ChatrixTheme.background,
       body: Container(
         decoration: ChatrixTheme.cinematicBackground,
         child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
-                child: Text(
-                  "Explore",
-                  style: GoogleFonts.playfairDisplay(
-                    color: ChatrixTheme.textPrimary,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-
-              // Search
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: ChatrixTheme.surface.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white.withOpacity(0.06)),
-                  ),
-                  child: TextField(
-                    onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
-                    style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
-                    decoration: InputDecoration(
-                      hintText: "Search companions...",
-                      hintStyle: GoogleFonts.inter(color: Colors.white24, fontSize: 14),
-                      border: InputBorder.none,
-                      icon: Icon(Icons.search_rounded, color: Colors.white24, size: 20),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 14),
+          child: Center(
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 960),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+                    child: Text(
+                      "Explore",
+                      style: GoogleFonts.playfairDisplay(
+                        color: ChatrixTheme.textPrimary,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                ),
-              ),
 
-              // Tags
-              SizedBox(
-                height: 40,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: _tags.length,
-                  itemBuilder: (context, index) {
-                    final tag = _tags[index];
-                    final isSelected = _selectedTag == tag['value'];
-                    return GestureDetector(
-                      onTap: () => setState(() => _selectedTag = tag['value']),
-                      child: Container(
-                        margin: const EdgeInsets.only(right: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? Colors.white.withOpacity(0.08)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: isSelected
-                                ? Colors.white.withOpacity(0.2)
-                                : Colors.white.withOpacity(0.06),
-                          ),
-                        ),
-                        child: Text(
-                          tag['label'],
-                          style: GoogleFonts.inter(
-                            color: isSelected ? Colors.white : Colors.white38,
-                            fontSize: 12,
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                          ),
+                  // Search
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: ChatrixTheme.surface.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                      ),
+                      child: TextField(
+                        onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
+                        style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+                        decoration: InputDecoration(
+                          hintText: "Search companions...",
+                          hintStyle: GoogleFonts.inter(color: Colors.white24, fontSize: 14),
+                          border: InputBorder.none,
+                          icon: Icon(Icons.search_rounded, color: Colors.white24, size: 20),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                       ),
-                    );
-                  },
-                ),
-              ),
+                    ),
+                  ),
+
+                  // Tags
+                  SizedBox(
+                    height: 40,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      itemCount: _tags.length,
+                      itemBuilder: (context, index) {
+                        final tag = _tags[index];
+                        final isSelected = _selectedTag == tag['value'];
+                        return GestureDetector(
+                          onTap: () => setState(() => _selectedTag = tag['value']),
+                          child: Container(
+                            margin: const EdgeInsets.only(right: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? Colors.white.withValues(alpha: 0.08)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: isSelected
+                                    ? Colors.white.withValues(alpha: 0.2)
+                                    : Colors.white.withValues(alpha: 0.06),
+                              ),
+                            ),
+                            child: Text(
+                              tag['label'],
+                              style: GoogleFonts.inter(
+                                color: isSelected ? Colors.white : Colors.white38,
+                                fontSize: 12,
+                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
 
               const SizedBox(height: 12),
 
@@ -653,7 +680,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.search_off_rounded, size: 48, color: Colors.white.withOpacity(0.1)),
+                            Icon(Icons.search_off_rounded, size: 48, color: Colors.white.withValues(alpha: 0.1)),
                             const SizedBox(height: 12),
                             Text(
                               "No companions found",
@@ -664,11 +691,22 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                       );
                     }
 
+                    // Dynamically calculate grid columns based on screen width
+                    int columns = 2;
+                    double ratio = 0.82;
+                    if (width > 900) {
+                      columns = 4;
+                      ratio = 0.85;
+                    } else if (width > 600) {
+                      columns = 3;
+                      ratio = 0.84;
+                    }
+
                     return GridView.builder(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        childAspectRatio: 0.82,
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: columns,
+                        childAspectRatio: ratio,
                         mainAxisSpacing: 12,
                         crossAxisSpacing: 12,
                       ),
@@ -688,6 +726,8 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
           ),
         ),
       ),
+    ),
+  ),
       // Create Your Own FAB
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'explore_fab',
@@ -719,13 +759,13 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
-            color: ChatrixTheme.surface.withOpacity(0.25),
-            border: Border.all(color: Colors.white.withOpacity(0.05)),
+            color: ChatrixTheme.surface.withValues(alpha: 0.25),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                companion.themeColor.withOpacity(0.04),
+                companion.themeColor.withValues(alpha: 0.04),
                 Colors.transparent,
               ],
             ),
@@ -745,7 +785,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: ChatrixTheme.champagneGold.withOpacity(0.1),
+                      color: ChatrixTheme.champagneGold.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
@@ -1117,13 +1157,26 @@ class _MyAIsScreenState extends ConsumerState<MyAIsScreen> {
               // Header
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
-                child: Text(
-                  "My AI",
-                  style: GoogleFonts.playfairDisplay(
-                    color: ChatrixTheme.textPrimary,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "My AI",
+                      style: GoogleFonts.playfairDisplay(
+                        color: ChatrixTheme.textPrimary,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.dashboard_outlined, color: Colors.white70),
+                      tooltip: "Creator Dashboard",
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const CreatorDashboardScreen()),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               Padding(
@@ -1204,7 +1257,7 @@ class _MyAIsScreenState extends ConsumerState<MyAIsScreen> {
             Icon(
               Icons.psychology_outlined,
               size: 64,
-              color: Colors.white.withOpacity(0.12),
+              color: Colors.white.withValues(alpha: 0.12),
             ),
             const SizedBox(height: 20),
             Text(
@@ -1233,7 +1286,7 @@ class _MyAIsScreenState extends ConsumerState<MyAIsScreen> {
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: Colors.white.withOpacity(0.1)),
+                  side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
@@ -1262,13 +1315,13 @@ class _MyAIsScreenState extends ConsumerState<MyAIsScreen> {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
-            color: ChatrixTheme.surface.withOpacity(0.25),
-            border: Border.all(color: Colors.white.withOpacity(0.05)),
+            color: ChatrixTheme.surface.withValues(alpha: 0.25),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                companion.themeColor.withOpacity(0.04),
+                companion.themeColor.withValues(alpha: 0.04),
                 Colors.transparent,
               ],
             ),
@@ -1291,7 +1344,7 @@ class _MyAIsScreenState extends ConsumerState<MyAIsScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: (companion.isPublic ? Colors.greenAccent : ChatrixTheme.neonPink).withOpacity(0.12),
+                        color: (companion.isPublic ? Colors.greenAccent : ChatrixTheme.neonPink).withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(

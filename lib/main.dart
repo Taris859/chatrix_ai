@@ -104,6 +104,13 @@ class ChatrixApp extends ConsumerWidget {
       home: authState.when(
         data: (user) {
           if (user != null) {
+            // Set chatrix_logged_in in SharedPreferences for returning signed in users
+            if (!user.isAnonymous) {
+              SharedPreferences.getInstance().then((prefs) {
+                prefs.setBool('chatrix_logged_in', true);
+              });
+            }
+
             // Anonymous users skip verification
             if (user.isAnonymous) return const LuxuryBottomNav();
 

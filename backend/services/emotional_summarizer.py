@@ -3,7 +3,9 @@ import json
 import os
 import re
 
-def summarize_emotions(client: OpenAI, messages: list, current_summary: dict = None) -> dict:
+from services.llm_service import LLMService
+
+def summarize_emotions(messages: list, current_summary: dict = None) -> dict:
     # Trigger emotional analysis if we have at least 5 messages
     if len(messages) < 5:
         return current_summary
@@ -68,25 +70,36 @@ Make sure you do NOT delete existing user profile data or important memories unl
 Recent Chat Log:
 {chat_text}
 """
-    try:
-        completion = client.chat.completions.create(
-          model="meta/llama3-70b-instruct",
-          messages=[{"role": "user", "content": prompt}],
-          temperature=0.2,
-          max_tokens=512
-        )
-        content = completion.choices[0].message.content
-        match = re.search(r'\{.*\}', content, re.DOTALL)
-        if match:
-            parsed = json.loads(match.group(0))
-            # Ensure basic fields exist
-            for field in ["relationship_state", "important_memories", "relationship_timeline", "emotional_profile", "user_profile"]:
-                if field not in parsed:
-                    parsed[field] = current_summary.get(field) if current_summary else (
-                        [] if field in ["important_memories", "relationship_timeline"] else {}
-                    )
-            return parsed
-        return current_summary
-    except Exception as e:
-        print(f"Summary Error: {e}")
-        return current_summary
+    nvidia_keys = LLMService.get_nvidia_keys()
+    errors = []
+    for idx, key in enumerate(nvidia_keys):
+        try:
+            client = OpenAI(
+                base_url="https://integrate.api.nvidia.com/v1",
+                api_key=key
+            )
+            completion = client.chat.completions.create(
+              model="meta/llama3-70b-instruct",
+              messages=[{"role": "user", "content": prompt}],
+              temperature=0.2,
+              max_tokens=512
+            )
+            content = completion.choices[0].message.content
+            match = re.search(r'\{.*\}', content, re.DOTALL)
+            if match:
+                parsed = json.loads(match.group(0))
+                # Ensure basic fields exist
+                for field in ["relationship_state", "important_memories", "relationship_timeline", "emotional_profile", "user_profile"]:
+                    if field not in parsed:
+                        parsed[field] = current_summary.get(field) if current_summary else (
+                            [] if field in ["important_memories", "relationship_timeline"] else {}
+                        )
+                return parsed
+            return current_summary
+        except Exception as e:
+            print(f"[Key Rotation Summarizer] Key #{idx+1} failed: {e}. Rotating...")
+            errors.append(f"Key #{idx+1} Error: {str(e)}")
+            continue
+
+    print(f"Summary Error (All keys failed): {errors}")
+    return current_summary

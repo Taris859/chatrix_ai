@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatrix Labs | Get Your AI Employee in 7 Days</title>
+    <meta name="description" content="We build custom AI chatbots, WhatsApp assistants, and support systems that turn website visitors into customers 24/7. Responds in seconds, available 24/7.">
+    
+    <!-- Open Graph for Social Sharing -->
+    <meta property="og:title" content="Chatrix Labs | Get Your AI Employee in 7 Days">
+    <meta property="og:description" content="We build custom AI chatbots, WhatsApp assistants, and automation systems that help businesses respond instantly and convert more customers.">
+    <meta property="og:type" content="website">
+    
+    <!-- Google Fonts: Outfit (Headlines) & Inter (Body) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Sticky Navigation Bar -->
+    <header class="navbar">
+        <div class="nav-container">
+            <a href="#" class="nav-logo" id="nav-logo">
+                <span class="logo-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM13 17H11V15H13V17ZM13 13H11V7H13V13Z" fill="url(#logo-gradient)"/>
+                        <defs>
+                            <linearGradient id="logo-gradient" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#6366F1" />
+                                <stop offset="1" stop-color="#06B6D4" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                </span>
+                <span class="logo-text">Chatrix <span class="accent-text">Labs</span></span>
+            </a>
+            
+            <nav class="nav-links" id="nav-links">
+                <a href="#who-it-is-for" class="nav-link">Who It's For</a>
+                <a href="#outcomes" class="nav-link">Solutions</a>
+                <a href="#why-us" class="nav-link">Why Us</a>
+                <a href="#pricing" class="nav-link">Pricing</a>
+            </nav>
+
+            <div class="nav-cta-group">
+                <!-- Direct WhatsApp CTA in Header -->
+                <a href="https://wa.me/919588346601?text=Hi%20Chatrix%20Labs!%20I'm%20interested%20in%20getting%20an%20AI%20Employee%20for%20my%20business." target="_blank" class="btn btn-whatsapp header-whatsapp" id="header-whatsapp-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.457L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.42 9.864-9.864.002-2.637-1.019-5.117-2.875-6.975C16.592 1.907 14.12 .887 11.488.887 6.052.887 1.626 5.31 1.622 10.748c-.001 1.737.458 3.43 1.33 4.937L1.93 20.125l4.717-1.237zM17.476 14.4c-.3-.15-1.77-.874-2.045-.975-.276-.1-.476-.15-.676.15-.2.3-.775.975-.95 1.174-.175.2-.35.224-.65.074-3-.15-4.475-1.125-5.95-2.4-.377-.325-.75-.7-1.125-1.125-.325-.375-.025-.575.25-.85.125-.125.25-.3.375-.45.125-.15.175-.25.275-.45.1-.2.05-.375-.025-.525s-.675-1.625-.925-2.225c-.244-.589-.48-.59-.66-.6l-.56-.01c-.2 0-.525.075-.8.375-.275.3-1.05 1.025-1.05 2.5s1.075 2.9 1.225 3.1c.15.2 2.11 3.22 5.11 4.52.714.31 1.27.495 1.7.63.717.228 1.37.195 1.885.118.575-.085 1.77-.724 2.02-1.385.25-.66.25-1.225.175-1.38-.075-.15-.275-.25-.575-.4z" />
+                    </svg>
+                    <span>Chat on WhatsApp</span>
+                </a>
+            </div>
+            
+            <button class="mobile-toggle" id="mobile-toggle" aria-label="Toggle Navigation">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </header>
+
+    <main>
+        
+        <!-- Hero Section -->
+        <section class="hero" id="hero">
+            <div class="hero-glow-1"></div>
+            <div class="hero-glow-2"></div>
+            
+            <div class="container hero-container">
+                <div class="hero-content">
+                    <div class="hero-tag">⚡ Live in 7 Days • Guaranteed Quality</div>
+                    <h1 class="hero-title">
+                        Get an <span class="gradient-text">AI Employee</span> for Your Business in 7 Days.
+                    </h1>
+                    <p class="hero-subtitle">
+                        We build AI chatbots, WhatsApp assistants, and automation systems that help businesses respond instantly and convert more customers 24/7.
+                    </p>
+                    <div class="hero-cta-group">
+                        <button class="btn btn-primary open-modal-btn" id="hero-primary-cta">
+                            <span>🟢 Book Free Consultation</span>
+                        </button>
+                        <a href="https://wa.me/919588346601?text=Hi%20Chatrix%20Labs!%20I%20want%20to%20get%20a%20free%20demo%20of%20your%20AI%20solutions." target="_blank" class="btn btn-secondary" id="hero-secondary-cta">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="margin-right: 8px;">
+                                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.457L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.42 9.864-9.864.002-2.637-1.019-5.117-2.875-6.975C16.592 1.907 14.12 .887 11.488.887 6.052.887 1.626 5.31 1.622 10.748c-.001 1.737.458 3.43 1.33 4.937L1.93 20.125l4.717-1.237zM17.476 14.4c-.3-.15-1.77-.874-2.045-.975-.276-.1-.476-.15-.676.15-.2.3-.775.975-.95 1.174-.175.2-.35.224-.65.074-3-.15-4.475-1.125-5.95-2.4-.377-.325-.75-.7-1.125-1.125-.325-.375-.025-.575.25-.85.125-.125.25-.3.375-.45.125-.15.175-.25.275-.45.1-.2.05-.375-.025-.525s-.675-1.625-.925-2.225c-.244-.589-.48-.59-.66-.6l-.56-.01c-.2 0-.525.075-.8.375-.275.3-1.05 1.025-1.05 2.5s1.075 2.9 1.225 3.1c.15.2 2.11 3.22 5.11 4.52.714.31 1.27.495 1.7.63.717.228 1.37.195 1.885.118.575-.085 1.77-.724 2.02-1.385.25-.66.25-1.225.175-1.38-.075-.15-.275-.25-.575-.4z" />
+                            </svg>
+                            <span>Chat on WhatsApp</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Hero Visual - Interactive Chat Box Preview -->
+                <div class="hero-visual">
+                    <div class="mock-device">
+                        <div class="mock-device-header">
+                            <span class="mock-dot red"></span>
+                            <span class="mock-dot yellow"></span>
+                            <span class="mock-dot green"></span>
+                            <span class="mock-title">Chatrix AI Employee Demo</span>
+                        </div>
+                        <div class="mock-device-body">
+                            <div class="mock-msg bot">
+                                <div class="mock-avatar">🤖</div>
+                                <div class="mock-text">Hi there! Welcome to GymFit. Are you looking to book a free trial class or check membership pricing?</div>
+                            </div>
+                            <div class="mock-msg user">
+                                <div class="mock-text">I want to book a class for tomorrow evening.</div>
+                            </div>
+                            <div class="mock-msg bot">
+                                <div class="mock-avatar">🤖</div>
+                                <div class="mock-text">Perfect! We have slots at 6:00 PM and 7:30 PM. What is your WhatsApp number to confirm your booking?</div>
+                            </div>
+                            <div class="mock-msg user">
+                                <div class="mock-text">+91 98765 43210</div>
+                            </div>
+                            <div class="mock-msg bot">
+                                <div class="mock-avatar">🤖</div>
+                                <div class="mock-text">✓ Awesome! Your slot for tomorrow at 6:00 PM is reserved. I've sent the confirmation receipt to your WhatsApp. See you soon!</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Who Is This For Section -->
+        <section class="section who-it-is-for" id="who-it-is-for">
+            <div class="container">
+                <div class="section-header">
+                    <h2 class="section-title">Who Is This For?</h2>
+                    <p class="section-subtitle">If you run one of these businesses, our AI employee fits into your workflow on Day 1.</p>
+                </div>
+                
+                <div class="industries-grid">
+                    <article class="industry-card" id="ind-coaching">
+                        <div class="industry-icon">📚</div>
+                        <h3 class="industry-name">Coaching Institutes</h3>
+                        <p class="industry-desc">Answer student queries 24/7, qualify admission inquiries, and capture phone numbers automatically.</p>
+                    </article>
+                    
+                    <article class="industry-card" id="ind-gyms">
+                        <div class="industry-icon">💪</div>
+                        <h3 class="industry-name">Gyms & Fitness</h3>
+                        <p class="industry-desc">Handle membership pricing, book free trials, and send automated reminders over WhatsApp.</p>
+                    </article>
+                    
+                    <article class="industry-card" id="ind-clinics">
+                        <div class="industry-icon">🏥</div>
+                        <h3 class="industry-name">Clinics & Doctors</h3>
+                        <p class="industry-desc">Book patient appointments, handle basic pre-visit questions, and automate calendar updates.</p>
+                    </article>
+                    
+                    <article class="industry-card" id="ind-realestate">
+                        <div class="industry-icon">🏢</div>
+                        <h3 class="industry-name">Real Estate</h3>
+                        <p class="industry-desc">Capture buyer budgets, filter out window shoppers, and book site visits instantly.</p>
+                    </article>
+                    
+                    <article class="industry-card" id="ind-consultants">
+                        <div class="industry-icon">💼</div>
+                        <h3 class="industry-name">Consultants & Agencies</h3>
+                        <p class="industry-desc">Filter client budgets, capture project scopes, and schedule discovery calls directly into your calendar.</p>
+                    </article>
+                    
+                    <article class="industry-card" id="ind-local">
+                        <div class="industry-icon">🏪</div>
+                        <h3 class="industry-name">Local Businesses</h3>
+                        <p class="industry-desc">Answer location details, operating hours, product availability, and capture leads while you sleep.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <!-- Solutions & Outcomes Section (Results > Features) -->
+        <section class="section outcomes" id="outcomes">
+            <div class="container">
+                <div class="section-header">
+                    <h2 class="section-title">Designed to Get You Customers, Not Just Clicks.</h2>
+                    <p class="section-subtitle">We stop talking about technical APIs. Here are the business results you get built out in 7 days.</p>
+                </div>
+                
+                <div class="outcomes-list">
+                    <!-- Outcome 1 -->
+                    <div class="outcome-row" id="out-visitors">
+                        <div class="outcome-content">
+                            <span class="outcome-number">01</span>
+                            <h3 class="outcome-title">Convert Website Visitors Into Paying Customers 24/7</h3>
+                            <p class="outcome-text">
+                                Most website visitors leave because nobody answers their questions in real-time. Our AI employee sits on your homepage, answers queries instantly, qualifies intent, and captures contact info before they bounce.
+                            </p>
+                            <ul class="outcome-bullets">
+                                <li>✓ Trained on your specific business FAQs</li>
+                                <li>✓ Instant response time (< 1 second)</li>
+                                <li>✓ Seamless handoff to your email/CRM</li>
+                            </ul>
+
+                        </div>
+                        <div class="outcome-image">
+                            <!-- Visual box representing web chatbot -->
+                            <div class="visual-panel">
+                                <div class="vp-header">Web Chatbot Agent</div>
+                                <div class="vp-row">
+                                    <div class="vp-label">Question:</div>
+                                    <div class="vp-value">"Do you offer Sunday classes?"</div>
+                                </div>
+                                <div class="vp-row">
+                                    <div class="vp-label">AI Answer:</div>
+                                    <div class="vp-value glow-border">"Yes! We offer Sunday batches at 10 AM. Would you like me to book your slot?"</div>
+                                </div>
+                                <div class="vp-badge">⚡ Status: Customer Captured</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Outcome 2 -->
+                    <div class="outcome-row reverse" id="out-whatsapp">
+                        <div class="outcome-content">
+                            <span class="outcome-number">02</span>
+                            <h3 class="outcome-title">Automate WhatsApp Customer Communication & Follow-Ups</h3>
+                            <p class="outcome-text">
+                                People don't read emails anymore. They live on WhatsApp. We set up an AI WhatsApp Assistant that chats with your customers, takes bookings, and sends automated follow-ups directly to their phones.
+                            </p>
+                            <ul class="outcome-bullets">
+                                <li>✓ Works via official WhatsApp Business API integration</li>
+                                <li>✓ Sends automated booking confirmation notifications</li>
+                                <li>✓ Follows up with cold leads automatically</li>
+                            </ul>
+
+                        </div>
+                        <div class="outcome-image">
+                            <!-- Visual box representing WhatsApp chatbot -->
+                            <div class="visual-panel whatsapp-theme">
+                                <div class="vp-header">WhatsApp AI Bot</div>
+                                <div class="vp-row">
+                                    <div class="vp-label">Client text:</div>
+                                    <div class="vp-value">"Can I reschedule my appointment?"</div>
+                                </div>
+                                <div class="vp-row">
+                                    <div class="vp-label">AI reply:</div>
+                                    <div class="vp-value whatsapp-green-glow">"Sure! I've rescheduled your clinic visit to Monday at 4 PM. See you!"</div>
+                                </div>
+                                <div class="vp-badge">🟢 98% Open Rate</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Outcome 3 -->
+                    <div class="outcome-row" id="out-support">
+                        <div class="outcome-content">
+                            <span class="outcome-number">03</span>
+                            <h3 class="outcome-title">Never Miss A Support Ticket or Customer Inquiry</h3>
+                            <p class="outcome-text">
+                                When customers have questions, they expect answers now. If you take 3 hours to reply, they go to your competitor. Our Customer Support Bot answers FAQs instantly, processes returns/status, and keeps clients happy 24/7/365.
+                            </p>
+                            <ul class="outcome-bullets">
+                                <li>✓ Reduces customer service workload by up to 70%</li>
+                                <li>✓ Escalates complex inquiries to human agents</li>
+                                <li>✓ Available 24 hours a day, 365 days a year</li>
+                            </ul>
+
+                        </div>
+                        <div class="outcome-image">
+                            <!-- Visual box representing customer support bot -->
+                            <div class="visual-panel support-theme">
+                                <div class="vp-header">FAQ Resolution</div>
+                                <div class="vp-row">
+                                    <div class="vp-label">Ticket Type:</div>
+                                    <div class="vp-value">Common FAQ Query</div>
+                                </div>
+                                <div class="vp-row">
+                                    <div class="vp-label">Auto-resolved:</div>
+                                    <div class="vp-value support-blue-glow">"Refund policy shared + Ticket closed successfully."</div>
+                                </div>
+                                <div class="vp-badge">✓ 70% Workload Reduction</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Outcome 4 -->
+                    <div class="outcome-row reverse" id="out-website">
+                        <div class="outcome-content">
+                            <span class="outcome-number">04</span>
+                            <h3 class="outcome-title">Premium, Lightning-Fast Custom Website Built to Sell</h3>
+                            <p class="outcome-text">
+                                Don't let a slow, ugly website ruin your credibility. We build beautiful, lightning-fast custom pages engineered specifically to build trust and drive visitors to your WhatsApp or Booking form.
+                            </p>
+                            <ul class="outcome-bullets">
+                                <li>✓ 100% responsive: looks stunning on mobile & desktop</li>
+                                <li>✓ Fully optimized for Google Pagespeed scores (90+)</li>
+                                <li>✓ Clean, premium copywriting that speaks value</li>
+                            </ul>
+
+                        </div>
+                        <div class="outcome-image">
+                            <!-- Visual box representing custom website -->
+                            <div class="visual-panel web-design-theme">
+                                <div class="vp-header">Performance Score</div>
+                                <div class="vp-progress-ring">
+                                    <div class="vp-ring-number">99</div>
+                                    <div class="vp-ring-label">Mobile Speed</div>
+                                </div>
+                                <div class="vp-badge">⚡ Conversions Optimized</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Why Businesses Choose Chatrix Labs -->
+        <section class="section why-us" id="why-us">
+            <div class="container">
+                <div class="section-header">
+                    <h2 class="section-title">Why Businesses Choose Chatrix Labs</h2>
+                    <p class="section-subtitle">People buy confidence before they buy services. Here is what we promise you.</p>
+                </div>
+                
+                <div class="why-us-grid">
+                    <div class="why-card" id="why-deployment">
+                        <div class="why-icon">🚀</div>
+                        <h3 class="why-title">Fast 7-Day Deployment</h3>
+                        <p class="why-desc">We don't take months. From signature to deployment on your website and WhatsApp, it takes exactly 7 days.</p>
+                    </div>
+                    
+                    <div class="why-card" id="why-knowledge">
+                        <div class="why-icon">🧠</div>
+                        <h3 class="why-title">Custom Knowledge Base</h3>
+                        <p class="why-desc">Your AI employee is trained specifically on your company documents, sheets, and policies, not generic web data.</p>
+                    </div>
+                    
+                    <div class="why-card" id="why-whatsapp">
+                        <div class="why-icon">💬</div>
+                        <h3 class="why-title">WhatsApp Integration</h3>
+                        <p class="why-desc">We link your AI directly to the WhatsApp Business API so your clients can converse with you instantly.</p>
+                    </div>
+                    
+                    <div class="why-card" id="why-mobile">
+                        <div class="why-icon">📱</div>
+                        <h3 class="why-title">Mobile Friendly Design</h3>
+                        <p class="why-desc">Over 80% of your business owners and clients visit from mobile. Every asset we construct is built mobile-first.</p>
+                    </div>
+                    
+                    <div class="why-card" id="why-handoff">
+                        <div class="why-icon">🤝</div>
+                        <h3 class="why-title">Human Handoff Support</h3>
+                        <p class="why-desc">If a customer asks a complex query, the AI seamlessly halts and alerts your human staff to take over instantly.</p>
+                    </div>
+                    
+                    <div class="why-card" id="why-cost">
+                        <div class="why-icon">💰</div>
+                        <h3 class="why-title">No Monthly Employee Cost</h3>
+                        <p class="why-desc">Unlike support staff, our bots work 24/7/365, never request leaves, and save you ₹40,000+ every single month.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- How It Works Section -->
+        <section class="section how-it-works" id="how-it-works">
+            <div class="container">
+                <div class="section-header">
+                    <h2 class="section-title">How It Works</h2>
+                    <p class="section-subtitle">Four simple steps to automate your customer communication and scale your sales funnel.</p>
+                </div>
+                
+                <div class="steps-container">
+                    <div class="step-card" id="step-1">
+                        <div class="step-num">1</div>
+                        <h3 class="step-title">Book Free Consultation</h3>
+                        <p class="step-desc">Book a 15-minute call or chat with us on WhatsApp to discuss your business requirements and target outcomes.</p>
+                    </div>
+                    
+                    <div class="step-card" id="step-2">
+                        <div class="step-num">2</div>
+                        <h3 class="step-title">We Build Your Assistant</h3>
+                        <p class="step-desc">We map out your business rules, train the AI assistant on your custom data, and connect the integrations.</p>
+                    </div>
+                    
+                    <div class="step-card" id="step-3">
+                        <div class="step-num">3</div>
+                        <h3 class="step-title">Go Live In 7 Days</h3>
+                        <p class="step-desc">We hook the AI widget to your website and activate your WhatsApp Business number. You are now fully automated.</p>
+                    </div>
+                    
+                    <div class="step-card" id="step-4">
+                        <div class="step-num">4</div>
+                        <h3 class="step-title">Start Capturing Leads</h3>
+                        <p class="step-desc">Your AI handles 90% of support and qualifies leads automatically, while you focus on booking clients.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Interactive ROI Calculator Section -->
+        <section class="section calculator-section" id="roi-calculator">
+            <div class="container">
+                <div class="section-header">
+                    <h2 class="section-title">Estimate Your Business Growth</h2>
+                    <p class="section-subtitle">Slide the numbers below to see how much support time you'll save and how many extra leads you can capture with an AI Employee.</p>
+                </div>
+                
+                <div class="calculator-box">
+<div class="calc-inputs">
+                        <!-- Input 1 -->
+                        <div class="calc-input-group">
+                            <div class="calc-label-row">
+                                <label for="traffic-input">Monthly Website Traffic</label>
+                                <span class="calc-val-display" id="traffic-display">3,000 visitors</span>
+                            </div>
+                            <input type="range" id="traffic-input" min="500" max="10000" step="250" value="3000" class="slider">
+                            <span class="range-bounds"><span>500</span><span>10,000+</span></span>
+                        </div>
+                        
+                        <!-- Input 2 -->
+                        <div class="calc-input-group">
+                            <div class="calc-label-row">
+                                <label for="ticket-value">Average Customer Value (INR)</label>
+                                <span class="calc-val-display" id="value-display">₹5,000</span>
+                            </div>
+                            <input type="range" id="ticket-value" min="1000" max="25000" step="500" value="5000" class="slider">
+                            <span class="range-bounds"><span>₹1,000</span><span>₹25,000+</span></span>
+                        </div>
+                    </div>
+                    
+                    <div class="calc-outputs">
+                        <h3 class="calc-out-header">Your Monthly Estimated Value</h3>
+                        <div class="calc-out-grid">
+                            <div class="calc-out-card">
+                                <span class="calc-out-val" id="leads-generated">45</span>
+                                <span class="calc-out-lbl">Extra Leads Captured</span>
+                            </div>
+                            
+                            <div class="calc-out-card glow-border-cyan">
+                                <span class="calc-out-val highlight-cyan" id="revenue-generated">₹22,500</span>
+                                <span class="calc-out-lbl">Additional Monthly Revenue</span>
+                            </div>
+                            
+                            <div class="calc-out-card">
+                                <span class="calc-out-val" id="hours-saved">22</span>
+                                <span class="calc-out-lbl">Support Hours Saved</span>
+                            </div>
+                        </div>
+                        <p class="calc-disclaimer">*Based on a grounded 1.5% lead capture improvement rate and 10% average deal close rate, resolving up to 70% of business FAQs automatically.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Testimonials Section -->
+        <section class="section testimonials" id="testimonials">
+            <div class="container">
+                <div class="section-header">
+                    <h2 class="section-title">What Our Clients Say</h2>
+                    <p class="section-subtitle">Read how local business owners and service providers automate lead capture and support.</p>
+                </div>
+                
+                <div class="testimonials-grid">
+                    <div class="testimonial-card">
+                        <div class="test-stars">⭐⭐⭐⭐⭐</div>
+                        <p class="test-quote">"Outstanding execution. They built our website and integrated the AI chatbot in just 5 days. We no longer miss late-night student admissions and course inquiries. Leads land straight in our inbox!"</p>
+                        <div class="test-author">
+                            <div class="author-info">
+                                <h4 class="author-name">Aarav Mehta</h4>
+                                <span class="author-title">Director, Zenith Academy</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="testimonial-card">
+                        <div class="test-stars">⭐⭐⭐⭐⭐</div>
+                        <p class="test-quote">"Saves my front-desk team hours of manual typing every single day. The AI responder handles timing and pricing FAQs on autopilot, allowing us to focus entirely on training our members."</p>
+                        <div class="test-author">
+                            <div class="author-info">
+                                <h4 class="author-name">Pooja Rao</h4>
+                                <span class="author-title">Owner, Apex Fitness Gyms</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="testimonial-card">
+                        <div class="test-stars">⭐⭐⭐⭐⭐</div>
+                        <p class="test-quote">"Super fast deployment. They delivered a beautiful, high-converting landing page and customized the FAQ responder within a week. Our customer response speed is down to seconds now."</p>
+                        <div class="test-author">
+                            <div class="author-info">
+                                <h4 class="author-name">Dr. Ananya Roy</h4>
+                                <span class="author-title">Founder, Roy Dental Clinic</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Pricing Section -->
+        <section class="section pricing" id="pricing">
+            <div class="container">
+                <div class="section-header">
+                    <!-- Scarcity banner inside header -->
+                    <div class="scarcity-banner">
+                        <span class="pulse-dot"></span>
+                        <strong>Only 5 client slots available this month</strong> to ensure quality support. (4 slots left)
+                    </div>
+                    <h2 class="section-title">Transparent, Flat-Rate Pricing</h2>
+                    <p class="section-subtitle">No hourly fees. No hidden setup costs. One flat-rate package to completely automate your business leads.</p>
+                </div>
+                
+                <div class="pricing-grid">
+                    <!-- Starter Package -->
+                    <div class="pricing-card" id="pricing-starter">
+                        <div class="pricing-header">
+                            <h3 class="tier-name">Starter</h3>
+                            <div class="tier-price"><span class="currency">₹</span>9,999</div>
+                            <p class="tier-desc">Ideal for small coaching centers, local gyms, salons, freelancers, and consultants.</p>
+                        </div>
+                        <div class="pricing-body">
+                            <ul class="pricing-features">
+                                <li>✓ 1-Page Professional Website</li>
+                                <li>✓ Integrated Contact Form</li>
+                                <li>✓ WhatsApp Integration</li>
+                                <li>✓ Basic AI Chatbot responder</li>
+                                <li>✓ Mobile responsive layout</li>
+                                <li>✓ Complete deployment in <strong>3-5 Days</strong></li>
+                            </ul>
+                        </div>
+                        <div class="pricing-footer">
+                            <a href="https://wa.me/919588346601?text=Hi%20Chatrix%20Labs!%20I'm%20interested%20in%20the%20Starter%20Package%20(₹9,999)." target="_blank" class="btn btn-whatsapp pricing-btn" id="pricing-cta-starter">
+                                <span>Discuss Starter Slot</span>
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <!-- Growth Package (Most Popular) -->
+                    <div class="pricing-card popular" id="pricing-growth">
+                        <div class="popular-tag">MOST POPULAR</div>
+                        <div class="pricing-header">
+                            <h3 class="tier-name">Growth ⭐</h3>
+                            <div class="tier-price"><span class="currency">₹</span>19,999</div>
+                            <p class="tier-desc">The ultimate growth solution for most businesses wanting custom-trained AI.</p>
+                        </div>
+                        <div class="pricing-body">
+                            <ul class="pricing-features">
+                                <li>✓ <strong>Everything in Starter +</strong></li>
+                                <li>✓ Multi-Section Professional Website</li>
+                                <li>✓ **AI Chatbot trained on your business** (Fees, Timings, Services, FAQs)</li>
+                                <li>✓ Lead capture system</li>
+                                <li>✓ Admin Lead Dashboard</li>
+                                <li>✓ Basic Analytics dashboard</li>
+                                <li>✓ <strong>30 Days Active Support</strong></li>
+                                <li>✓ Deployment in <strong>5-7 Days</strong></li>
+                            </ul>
+                        </div>
+                        <div class="pricing-footer">
+                            <a href="https://wa.me/919588346601?text=Hi%20Chatrix%20Labs!%20I'm%20interested%20in%20the%20Growth%20Package%20(₹19,999)." target="_blank" class="btn btn-primary pricing-btn" id="pricing-cta-growth">
+                                <span>Secure Growth Slot</span>
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <!-- Scale Package -->
+                    <div class="pricing-card" id="pricing-scale">
+                        <div class="pricing-header">
+                            <h3 class="tier-name">Scale</h3>
+                            <div class="tier-price"><span class="currency">₹</span>29,999</div>
+                            <p class="tier-desc">Advanced workflow automation for brands ready to completely automate support & bookings.</p>
+                        </div>
+                        <div class="pricing-body">
+                            <ul class="pricing-features">
+                                <li>✓ <strong>Everything in Growth +</strong></li>
+                                <li>✓ **Custom AI Knowledge Base** (Upload PDFs, Docs, custom sheets)</li>
+                                <li>✓ Appointment Booking System</li>
+                                <li>✓ Automated Email Notifications</li>
+                                <li>✓ Basic CRM Integration</li>
+                                <li>✓ **Priority Support channel**</li>
+                                <li>✓ Deployment in <strong>7-10 Days</strong></li>
+                            </ul>
+                        </div>
+                        <div class="pricing-footer">
+                            <a href="https://wa.me/919588346601?text=Hi%20Chatrix%20Labs!%20I'm%20interested%20in%20the%20Scale%20Package%20(₹29,999)." target="_blank" class="btn btn-whatsapp pricing-btn" id="pricing-cta-scale">
+                                <span>Discuss Scale Slot</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container footer-container">
+            <div class="footer-info">
+                <div class="footer-logo">Chatrix <span class="accent-text">Labs</span></div>
+                <p class="footer-desc">Building custom AI Employees that help businesses automate support, capture leads, and grow 24/7.</p>
+            </div>
+            
+            <div class="footer-links-group">
+                <div class="footer-col">
+                    <h4 class="footer-title">Navigation</h4>
+                    <a href="#who-it-is-for">Who It's For</a>
+                    <a href="#outcomes">Solutions</a>
+                    <a href="#why-us">Why Us</a>
+                    <a href="#pricing">Pricing</a>
+                </div>
+                
+                <div class="footer-col">
+                    <h4 class="footer-title">Contact</h4>
+                    <span class="footer-contact-item">📧 chatrix@zohomail.in</span>
+                    <a href="https://wa.me/919588346601" target="_blank" class="footer-contact-item">💬 Chat on WhatsApp</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer-bottom">
+            <p>&copy; 2026 Chatrix Labs. All rights reserved. Built for high conversion.</p>
+        </div>
+    </footer>
+
+    <!-- Lead Capture Form Modal (Formspree Integration) -->
+    <div class="modal-overlay" id="consultation-modal">
+        <div class="modal-box">
+            <button class="modal-close-btn" id="modal-close-btn" aria-label="Close Modal">&times;</button>
+            <div class="modal-header">
+                <h3 class="modal-title">Book a Free Consultation</h3>
+                <p class="modal-subtitle">We will map out your requirements and design your custom AI Employee.</p>
+            </div>
+            <!-- Update the action URL to a mock Formspree endpoint that users can customize -->
+            <form action="https://formspree.io/f/xbdedjlp" method="POST" class="modal-form" id="consultation-form">
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label for="form-name">Your Name *</label>
+                        <input type="text" id="form-name" name="name" required placeholder="John Doe">
+                    </div>
+                    <div class="form-group">
+                        <label for="form-business">Business Name *</label>
+                        <input type="text" id="form-business" name="business_name" required placeholder="GymFit / Clinic">
+                    </div>
+                </div>
+                
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label for="form-whatsapp">WhatsApp Number *</label>
+                        <input type="tel" id="form-whatsapp" name="whatsapp" required placeholder="+91 98765 43210">
+                    </div>
+                    <div class="form-group">
+                        <label for="form-website">Business Website (Optional)</label>
+                        <input type="url" id="form-website" name="website" placeholder="https://example.com">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="form-tier">Selected Package *</label>
+                    <select id="form-tier" name="package" required>
+                        <option value="" disabled>Select a package</option>
+                        <option value="Starter (₹9,999)">Starter (₹9,999)</option>
+                        <option value="Growth (₹19,999)" selected>Growth (₹19,999) - Most Popular</option>
+                        <option value="Scale (₹29,999)">Scale (₹29,999)</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="form-notes">What is your biggest bottleneck? (Support or Leads?)</label>
+                    <textarea id="form-notes" name="notes" rows="3" placeholder="e.g. We get 100 website visitors a day but struggle to capture emails, or our WhatsApp gets flooded with same support FAQs..."></textarea>
+                </div>
+
+                <input type="text" name="_gotcha" style="display:none"> <!-- Spam Prevention -->
+                
+                <button type="submit" class="btn btn-primary modal-submit-btn" id="form-submit-btn">
+                    <span>Submit & Book Call</span>
+                </button>
+            </form>
+            
+            <div class="form-status-msg success-msg" id="form-success-msg" style="display: none;">
+                <div class="status-icon">✓</div>
+                <h4>Consultation Booking Successful!</h4>
+                <p>We've received your request and will reach out to you on WhatsApp within 2 hours to confirm your calendar booking.</p>
+            </div>
+            <div class="form-status-msg error-msg" id="form-error-msg" style="display: none;">
+                <div class="status-icon">⚠️</div>
+                <h4>Something went wrong.</h4>
+                <p>Please try again or click the WhatsApp button to chat with us directly.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating WhatsApp CTA (Instant Access) -->
+    <a href="https://wa.me/919588346601?text=Hi%20Chatrix%20Labs!%20I'm%20browsing%20your%20website%20and%20want%20to%20chat." target="_blank" class="floating-whatsapp-btn" id="floating-whatsapp" aria-label="Chat on WhatsApp">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.457L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.42 9.864-9.864.002-2.637-1.019-5.117-2.875-6.975C16.592 1.907 14.12 .887 11.488.887 6.052.887 1.626 5.31 1.622 10.748c-.001 1.737.458 3.43 1.33 4.937L1.93 20.125l4.717-1.237zM17.476 14.4c-.3-.15-1.77-.874-2.045-.975-.276-.1-.476-.15-.676.15-.2.3-.775.975-.95 1.174-.175.2-.35.224-.65.074-3-.15-4.475-1.125-5.95-2.4-.377-.325-.75-.7-1.125-1.125-.325-.375-.025-.575.25-.85.125-.125.25-.3.375-.45.125-.15.175-.25.275-.45.1-.2.05-.375-.025-.525s-.675-1.625-.925-2.225c-.244-.589-.48-.59-.66-.6l-.56-.01c-.2 0-.525.075-.8.375-.275.3-1.05 1.025-1.05 2.5s1.075 2.9 1.225 3.1c.15.2 2.11 3.22 5.11 4.52.714.31 1.27.495 1.7.63.717.228 1.37.195 1.885.118.575-.085 1.77-.724 2.02-1.385.25-.66.25-1.225.175-1.38-.075-.15-.275-.25-.575-.4z" />
+        </svg>
+        <span class="wa-tooltip">Chat with us!</span>
+    </a>
+
+    <!-- Floating Chatbot Widget (The Conversion Tool) -->
+    <div class="chatbot-widget" id="chatbot-widget">
+        <button class="chatbot-trigger" id="chatbot-trigger" aria-label="Open Chat Demo">
+            <span class="chat-trigger-icon">💬</span>
+            <span class="chat-trigger-label">Try AI Employee Demo</span>
+        </button>
+        
+        <div class="chatbot-window" id="chatbot-window" style="display: none;">
+            <div class="chatbot-header">
+                <div class="chatbot-header-info">
+                    <span class="chatbot-avatar">🤖</span>
+                    <div>
+                        <h4 class="chatbot-name">Chatrix AI Demo</h4>
+                        <span class="chatbot-status">🟢 Online | Responds Instantly</span>
+                    </div>
+                </div>
+                <button class="chatbot-close-btn" id="chatbot-close" aria-label="Close Chat">&times;</button>
+            </div>
+            
+            <div class="chatbot-body" id="chatbot-messages">
+                <div class="chat-msg bot">
+                    <div class="chat-avatar">🤖</div>
+                    <div class="chat-text">
+                        Hello! I am the Chatrix Labs AI Assistant. Click on one of the quick options below to see how I handle client questions.
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quick Chips to eliminate input typing friction -->
+            <div class="chatbot-chips" id="chatbot-chips">
+                <button class="chip-btn" data-query="pricing">💰 Check Pricing</button>
+                <button class="chip-btn" data-query="setup">⚡ Setup Time</button>
+                <button class="chip-btn" data-query="whatsapp">💬 Chatbot Capabilities</button>
+                <button class="chip-btn" data-query="book">📅 Book Free Call</button>
+            </div>
+            
+            <div class="chatbot-footer">
+                <span class="chatbot-footer-note">Demo powered by Chatrix Labs engine.</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

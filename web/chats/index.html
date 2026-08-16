@@ -124,6 +124,13 @@
   </div>
   <script>
     (function(){
+      var botPattern = /bot|googlebot|crawler|spider|robot|crawling|lighthouse|adsbot|bingbot|yandex|baidu|duckduck/i;
+      if (botPattern.test(navigator.userAgent)) {
+        console.log("Search bot detected. Skipping redirect.");
+        var overlay = document.getElementById('redirect-overlay');
+        if (overlay) overlay.style.display = 'none';
+        return;
+      }
       var overlay = document.getElementById('redirect-overlay');
       setTimeout(function(){
         overlay.classList.add('fade-out');
