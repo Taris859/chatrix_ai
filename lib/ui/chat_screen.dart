@@ -2188,6 +2188,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
           )
         ],
       ),
+     ),
     );
   }
 
