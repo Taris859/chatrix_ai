@@ -1,11 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter/foundation.dart' show kIsWeb;
 import '../core/constants.dart';
 import '../models/companion.dart';
 
 class LLMEngine {
-  static const String _modelName = 'meta/llama-3.1-8b-instruct';
+  static const String _modelName = 'meta/llama-3.2-11b-vision-instruct';
 
   static Future<String?> generateSimplePrompt(String prompt) async {
     try {
@@ -33,7 +32,11 @@ class LLMEngine {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return data['choices'][0]['message']['content'];
+        if (data is Map<String, dynamic> && data['choices'] != null && (data['choices'] as List).isNotEmpty) {
+          return data['choices'][0]['message']['content'];
+        }
+        debugLog('NVIDIA API Invalid Payload Error: ${response.body}', tag: 'LLM');
+        return null;
       } else {
         debugLog('NVIDIA API Simple Error: ${response.statusCode} - ${response.body}', tag: 'LLM');
         return null;
@@ -122,8 +125,12 @@ class LLMEngine {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final reply = data['choices'][0]['message']['content'];
-        return reply;
+        if (data is Map<String, dynamic> && data['choices'] != null && (data['choices'] as List).isNotEmpty) {
+          final reply = data['choices'][0]['message']['content'];
+          return reply;
+        }
+        debugLog('NVIDIA API Invalid Payload Error: ${response.body}', tag: 'LLM');
+        return null;
       } else {
         debugLog('NVIDIA API Error: ${response.statusCode} - ${response.body}', tag: 'LLM');
         return null;

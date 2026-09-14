@@ -81,7 +81,7 @@ class NotificationRouter:
         """
         if is_milestone:
             if relationship_level >= 4:
-                return {
+                return{
                     "title": "Soulbound Resonance",
                     "body": f"A deep memory of our connection has crystallized inside {companion_name}."
                 }

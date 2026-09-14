@@ -13,7 +13,7 @@ _db_lock = threading.Lock()
 # --- Fallback Local DB Methods ---
 def _load_db():
     if not os.path.exists(DATA_DIR):
-        os.makedirs(DATA_DIR)
+        os.makedirs(DATA_DIR) 
     if not os.path.exists(HISTORY_FILE):
         return {}
     with open(HISTORY_FILE, "r", encoding="utf-8") as f:
@@ -50,7 +50,7 @@ def check_message_limit(user_id: str, is_premium: bool) -> bool:
 
     # Fallback to local JSON
     with _db_lock:
-        db_local = _load_db()
+        db_local = _load_db()      
         meta_key = f"user_meta_{user_id}"
         user_data = db_local.get(meta_key, {"date": today, "count": 0})
         if user_data.get("date") != today:

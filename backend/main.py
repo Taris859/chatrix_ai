@@ -157,46 +157,77 @@ async def chat_proxy(request: dict):
     """
     Secure completions proxy router for client devices.
     Rotates NVIDIA keys automatically if rate-limited (429) or unauthorized/out of credits (401).
+    Remaps deprecated models to active endpoints.
     """
+    target_model = request.get("model", "")
+    deprecated_models = [
+        "meta/llama-3.1-8b-instruct",
+        "meta/llama3-70b-instruct",
+        "meta/llama-3.1-70b-instruct",
+        "meta/llama-3-70b-instruct"
+    ]
+    if not target_model or target_model in deprecated_models:
+        request["model"] = "meta/llama-3.2-11b-vision-instruct"
+
     nvidia_keys = LLMService.get_nvidia_keys()
-    if not nvidia_keys:
-        raise HTTPException(status_code=500, detail="No NVIDIA API keys configured on the backend server.")
+    if nvidia_keys:
+        async with httpx.AsyncClient() as client:
+            last_error = None
+            for idx, key in enumerate(nvidia_keys):
+                headers = {
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {key}"
+                }
+                try:
+                    response = await client.post(
+                        "https://integrate.api.nvidia.com/v1/chat/completions",
+                        json=request,
+                        headers=headers,
+                        timeout=30.0
+                    )
+                    
+                    if response.status_code in (401, 429, 404, 410):
+                        print(f"[Key Rotation Proxy] Status {response.status_code}. Detail: {response.text}. Attempting active model fallback...")
+                        last_error = f"Status {response.status_code}: {response.text}"
+                        request["model"] = "meta/llama-3.2-11b-vision-instruct"
+                        retry_resp = await client.post(
+                            "https://integrate.api.nvidia.com/v1/chat/completions",
+                            json=request,
+                            headers=headers,
+                            timeout=30.0
+                        )
+                        if retry_resp.status_code == 200:
+                            return retry_resp.json()
+                        continue
+                    
+                    if response.status_code != 200:
+                        last_error = f"Status {response.status_code}: {response.text}"
+                        continue
 
-    async with httpx.AsyncClient() as client:
-        last_error = None
-        for idx, key in enumerate(nvidia_keys):
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {key}"
-            }
-            try:
-                response = await client.post(
-                    "https://integrate.api.nvidia.com/v1/chat/completions",
-                    json=request,
-                    headers=headers,
-                    timeout=30.0
-                )
-                
-                # Check for rate-limiting or credentials issues to trigger key rotation
-                if response.status_code in (401, 429):
-                    print(f"[Key Rotation Proxy] Key #{idx+1} failed with status {response.status_code}. Detail: {response.text}. Rotating...")
-                    last_error = f"Status {response.status_code}: {response.text}"
-                    continue
-                
-                # For standard success (200) or client/server payload errors (e.g. 400), return directly
-                if response.status_code != 200:
                     return response.json()
+                except Exception as e:
+                    print(f"[Key Rotation Proxy] Key #{idx+1} exception: {e}. Rotating...")
+                    last_error = str(e)
+                    continue
 
-                return response.json()
-            except Exception as e:
-                print(f"[Key Rotation Proxy] Key #{idx+1} exception: {e}. Rotating...")
-                last_error = str(e)
-                continue
-
-        # If we reach here, all keys in the pool have been exhausted
+    # Fallback to LLMService generate_response
+    try:
+        messages = request.get("messages", [])
+        fallback_text = await LLMService.generate_response(messages=messages, model_name="meta/llama-3.2-11b-vision-instruct")
+        return {
+            "choices": [
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": fallback_text
+                    }
+                }
+            ]
+        }
+    except Exception as fe:
         raise HTTPException(
             status_code=502,
-            detail=f"Failed to communicate with NVIDIA API. All keys in key pool exhausted. Last error: {last_error}"
+            detail=f"Failed to communicate with LLM API cluster. All keys in pool exhausted. Last error: {last_error or fe}"
         )
 
 @app.get("/history")

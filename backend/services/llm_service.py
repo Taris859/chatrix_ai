@@ -17,9 +17,18 @@ class LLMService:
         return []
 
     @staticmethod
-    async def generate_response(messages: list, model_name: str = "meta/llama3-70b-instruct", is_premium: bool = False) -> str:
+    async def generate_response(messages: list, model_name: str = "meta/llama-3.2-11b-vision-instruct", is_premium: bool = False) -> str:
         # Fallback chain: Nvidia Llama -> Gemini -> DeepSeek
         errors = []
+
+        deprecated_models = [
+            "meta/llama-3.1-8b-instruct",
+            "meta/llama3-70b-instruct",
+            "meta/llama-3.1-70b-instruct",
+            "meta/llama-3-70b-instruct"
+        ]
+        if not model_name or model_name in deprecated_models:
+            model_name = "meta/llama-3.2-11b-vision-instruct"
 
         # 1. Try Nvidia Llama (with key rotation)
         nvidia_keys = LLMService.get_nvidia_keys()

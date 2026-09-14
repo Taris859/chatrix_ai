@@ -2106,34 +2106,33 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                   width: 1.0,
                 ),
               ),
-              child: Center(
-                child: TextField(
-                  controller: _messageController,
-                  enabled: !_isTyping,
-                  maxLines: null,
-                  keyboardType: TextInputType.multiline,
-                  style: GoogleFonts.inter(
-                    color: _isTyping ? Colors.white38 : Colors.white,
+              child: TextField(
+                controller: _messageController,
+                enabled: !_isTyping,
+                maxLines: null,
+                keyboardType: TextInputType.multiline,
+                textAlignVertical: TextAlignVertical.center,
+                style: GoogleFonts.inter(
+                  color: _isTyping ? Colors.white38 : Colors.white,
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w400,
+                ),
+                decoration: InputDecoration(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  hintText: _isTyping ? "Wait for reply..." : "Whisper something...",
+                  hintStyle: GoogleFonts.inter(
+                    color: _isTyping ? Colors.white24 : ChatrixTheme.textSecondary,
                     fontSize: 14.5,
                     fontWeight: FontWeight.w400,
                   ),
-                  decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    hintText: _isTyping ? "Wait for reply..." : "Whisper something...",
-                    hintStyle: GoogleFonts.inter(
-                      color: _isTyping ? Colors.white24 : ChatrixTheme.textSecondary,
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w400,
-                    ),
-                    border: InputBorder.none,
-                  ),
-                  onSubmitted: (_) {
-                    if (!_isTyping) {
-                      HapticFeedback.lightImpact();
-                      _sendMessage();
-                    }
-                  },
+                  border: InputBorder.none,
                 ),
+                onSubmitted: (_) {
+                  if (!_isTyping) {
+                    HapticFeedback.lightImpact();
+                    _sendMessage();
+                  }
+                },
               ),
             ),
           ),

@@ -11,7 +11,7 @@ client = OpenAI(
 )
 print("Testing...")
 completion = client.chat.completions.create(
-  model="meta/llama-3.1-70b-instruct",
+  model="meta/llama-3.2-11b-vision-instruct",
   messages=[{"role":"user","content":"hello"}],
   temperature=0.8,
   max_tokens=256,
