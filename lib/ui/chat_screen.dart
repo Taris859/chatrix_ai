@@ -1659,7 +1659,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
   void _shareMessageText(String text, bool isUser) {
     final sender = isUser ? "You" : widget.companion.name;
     final shareContent = "$sender: \"$text\"\n\n~ Sent via Chatrix AI";
-    Share.share(shareContent);
+    SharePlus.share(shareContent);
   }
 
   Future<void> _retriggerAiResponse(String newPrompt) async {
@@ -1704,7 +1704,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
         }
       }
     } catch (e) {
-      debugLog("Retrigger AI Error: $e");
+      print("Retrigger AI Error: $e");
     } finally {
       if (mounted) {
         setState(() {
