@@ -14,6 +14,16 @@ import '../../services/razorpay_service.dart';
 import '../../auth/auth_service.dart';
 import '../../auth/auth_provider.dart';
 
+@JS('openRazorpayCheckout')
+external void _openRazorpayCheckout(
+  JSString key,
+  JSNumber amount,
+  JSString orderId,
+  JSString email,
+  JSFunction successCb,
+  JSFunction errorCb,
+);
+
 class SubscriptionPlan {
   final String id;
   final String name;
@@ -240,9 +250,8 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
 
       // 2. Launch Razorpay payment options (Web vs Native)
       if (kIsWeb) {
-        if (globalContext.has('openRazorpayCheckout'.toJS)) {
-          globalContext.callMethod(
-            'openRazorpayCheckout'.toJS,
+        try {
+          _openRazorpayCheckout(
             _razorpayKey.toJS,
             amountPaise.toJS,
             orderId.toJS,
@@ -254,6 +263,8 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
               _handleWebPaymentError(error.toDart);
             }).toJS,
           );
+        } catch (e) {
+          print("Web checkout error: $e");
         }
         return;
       }
