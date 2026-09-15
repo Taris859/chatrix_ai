@@ -26,6 +26,7 @@ import 'memory_journal_screen.dart';
 import '../models/relationship_chapter.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'navigation/luxury_bottom_nav.dart';
+import 'package:share_plus/share_plus.dart';
 
 
 class ChatScreen extends ConsumerStatefulWidget {
@@ -1635,6 +1636,370 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
     );
   }
 
+  void _copyMessageText(String text) {
+    Clipboard.setData(ClipboardData(text: text));
+    HapticFeedback.lightImpact();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_outline, color: Colors.greenAccent, size: 20),
+            const SizedBox(width: 10),
+            Text("Copied to clipboard", style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w500)),
+          ],
+        ),
+        backgroundColor: const Color(0xFF1E1F23),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _shareMessageText(String text, bool isUser) {
+    final sender = isUser ? "You" : widget.companion.name;
+    final shareContent = "$sender: \"$text\"\n\n~ Sent via Chatrix AI";
+    Share.share(shareContent);
+  }
+
+  Future<void> _retriggerAiResponse(String newPrompt) async {
+    setState(() {
+      _isTyping = true;
+    });
+    try {
+      final currentActivity = _getCompanionActivity();
+      final responseData = await _memoryService.sendMessage(
+        message: newPrompt,
+        userId: _userId,
+        companionName: widget.companion.name,
+        companionArchetype: widget.companion.archetype,
+        companionPersonality: widget.companion.personality,
+        companionGreeting: widget.companion.greeting,
+        sceneContext: "${_currentScene?.name ?? ""}. Note: You were currently $currentActivity when messaged.",
+        isPremium: _isPremiumUser,
+        companion: widget.companion,
+      );
+
+      if (responseData != null) {
+        final aiText = responseData["response"] as String;
+        String action = "";
+        String text = aiText;
+        if (aiText.contains("*") && aiText.lastIndexOf("*") > aiText.indexOf("*")) {
+          int firstStar = aiText.indexOf("*");
+          int secondStar = aiText.indexOf("*", firstStar + 1);
+          action = aiText.substring(firstStar, secondStar + 1);
+          text = aiText.replaceFirst(action, "").trim();
+        }
+
+        if (mounted) {
+          setState(() {
+            _messages.add({
+              "isUser": false,
+              "text": text.isEmpty ? action : text,
+              "action": action.isNotEmpty ? action : null,
+            });
+            _saveLocalCache();
+          });
+          _scrollToBottom();
+        }
+      }
+    } catch (e) {
+      debugLog("Retrigger AI Error: $e");
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isTyping = false;
+        });
+      }
+    }
+  }
+
+  void _showEditMessageDialog(Map<String, dynamic> msg, int index) {
+    final String currentText = msg["text"] ?? msg["content"] ?? "";
+    final TextEditingController editController = TextEditingController(text: currentText);
+    bool isUser = msg["isUser"] ?? (msg["role"] == "user");
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: const Color(0xFF141518).withOpacity(0.95),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: widget.companion.themeColor.withOpacity(0.3)),
+                boxShadow: [
+                  BoxShadow(
+                    color: widget.companion.themeColor.withOpacity(0.1),
+                    blurRadius: 20,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.edit_rounded, color: widget.companion.themeColor, size: 20),
+                      const SizedBox(width: 10),
+                      Text(
+                        "Edit Message",
+                        style: GoogleFonts.outfit(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    child: TextField(
+                      controller: editController,
+                      maxLines: 4,
+                      minLines: 1,
+                      style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        hintText: "Edit your message...",
+                        hintStyle: TextStyle(color: Colors.white38),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text("Cancel", style: GoogleFonts.inter(color: Colors.white54)),
+                      ),
+                      const SizedBox(width: 12),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: widget.companion.themeColor,
+                          foregroundColor: Colors.black,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                        ),
+                        onPressed: () async {
+                          final newText = editController.text.trim();
+                          if (newText.isNotEmpty && newText != currentText) {
+                            setState(() {
+                              _messages[index]["text"] = newText;
+                              if (_messages[index]["content"] != null) {
+                                _messages[index]["content"] = newText;
+                              }
+                              _saveLocalCache();
+                            });
+                            Navigator.pop(context);
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text("Message updated", style: GoogleFonts.inter(color: Colors.white)),
+                                backgroundColor: const Color(0xFF1E1F23),
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+
+                            if (isUser && index == _messages.length - 1 && !_isTyping) {
+                              _retriggerAiResponse(newText);
+                            }
+                          } else {
+                            Navigator.pop(context);
+                          }
+                        },
+                        child: Text("Save", style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showMessageOptionsModal(Map<String, dynamic> msg, int index) {
+    HapticFeedback.mediumImpact();
+    bool isUser = msg["isUser"] ?? (msg["role"] == "user");
+    String textContent = msg["text"] ?? msg["content"] ?? "";
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            decoration: BoxDecoration(
+              color: const Color(0xFF101114).withOpacity(0.95),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              border: Border.all(color: widget.companion.themeColor.withOpacity(0.2)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.04),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.white.withOpacity(0.06)),
+                  ),
+                  child: Text(
+                    textContent.length > 100 ? "${textContent.substring(0, 100)}..." : textContent,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(color: Colors.white70, fontSize: 12.5, fontStyle: FontStyle.italic),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _buildOptionTile(
+                  icon: Icons.copy_rounded,
+                  title: "Copy Text",
+                  subtitle: "Copy message content to clipboard",
+                  onTap: () {
+                    Navigator.pop(context);
+                    _copyMessageText(textContent);
+                  },
+                ),
+                _buildOptionTile(
+                  icon: Icons.edit_outlined,
+                  title: "Edit Message",
+                  subtitle: "Modify this message",
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showEditMessageDialog(msg, index);
+                  },
+                ),
+                _buildOptionTile(
+                  icon: Icons.share_rounded,
+                  title: "Share Text",
+                  subtitle: "Share to WhatsApp, Messages, or Social Apps",
+                  onTap: () {
+                    Navigator.pop(context);
+                    _shareMessageText(textContent, isUser);
+                  },
+                ),
+                _buildOptionTile(
+                  icon: Icons.auto_awesome_rounded,
+                  title: "Share Quote Card",
+                  subtitle: "Generate a beautiful quote card image",
+                  color: widget.companion.themeColor,
+                  onTap: () {
+                    Navigator.pop(context);
+                    showDialog(
+                      context: context,
+                      builder: (_) => _ViralShareCardDialog(
+                        companion: widget.companion,
+                        messages: [msg],
+                      ),
+                    );
+                  },
+                ),
+                _buildOptionTile(
+                  icon: Icons.checklist_rounded,
+                  title: "Select Multiple",
+                  subtitle: "Select multiple messages for multi-quote card",
+                  onTap: () {
+                    Navigator.pop(context);
+                    setState(() {
+                      _isSelectionMode = true;
+                      _selectedIndices.clear();
+                      _selectedIndices.add(index);
+                    });
+                  },
+                ),
+                _buildOptionTile(
+                  icon: Icons.delete_outline_rounded,
+                  title: "Delete Message",
+                  subtitle: "Remove from chat transcript",
+                  color: Colors.redAccent,
+                  onTap: () {
+                    Navigator.pop(context);
+                    setState(() {
+                      _messages.removeAt(index);
+                      _saveLocalCache();
+                    });
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text("Message deleted", style: GoogleFonts.inter(color: Colors.white)),
+                        backgroundColor: const Color(0xFF1E1F23),
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 10),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildOptionTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+    Color? color,
+  }) {
+    final iconColor = color ?? Colors.white;
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      leading: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: iconColor.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(icon, color: iconColor, size: 20),
+      ),
+      title: Text(
+        title,
+        style: GoogleFonts.outfit(color: color ?? Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: GoogleFonts.inter(color: Colors.white38, fontSize: 11.5),
+      ),
+      onTap: onTap,
+    );
+  }
+
   Widget _buildMessageBubble(Map<String, dynamic> msg, int index) {
     bool isUser = msg["isUser"] ?? (msg["role"] == "user");
     String textContent = msg["text"] ?? msg["content"] ?? "";
@@ -1669,12 +2034,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
     return GestureDetector(
       onLongPress: () {
         if (!_isSelectionMode) {
-          setState(() {
-            _isSelectionMode = true;
-            _selectedIndices.clear();
-            _selectedIndices.add(index);
-          });
-          HapticFeedback.mediumImpact();
+          _showMessageOptionsModal(msg, index);
         }
       },
       onTap: () {
@@ -1749,7 +2109,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                     width: isSelected ? 1.5 : 1.0,
                   ),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1794,6 +2154,48 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                         ),
                       ),
                     ],
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      mainAxisSize: MainAxisSize.max,
+                      children: [
+                        InkWell(
+                          onTap: () => _copyMessageText(textContent),
+                          borderRadius: BorderRadius.circular(12),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                            child: Icon(Icons.copy_rounded, size: 13, color: Colors.white30),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        InkWell(
+                          onTap: () => _showEditMessageDialog(msg, index),
+                          borderRadius: BorderRadius.circular(12),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                            child: Icon(Icons.edit_outlined, size: 13, color: Colors.white30),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        InkWell(
+                          onTap: () => _shareMessageText(textContent, isUser),
+                          borderRadius: BorderRadius.circular(12),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                            child: Icon(Icons.share_rounded, size: 13, color: Colors.white30),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        InkWell(
+                          onTap: () => _showMessageOptionsModal(msg, index),
+                          borderRadius: BorderRadius.circular(12),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                            child: Icon(Icons.more_horiz_rounded, size: 14, color: Colors.white30),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
