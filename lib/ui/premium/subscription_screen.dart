@@ -6,7 +6,8 @@ import 'dart:ui';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:js' as js;
+import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme.dart';
 import '../../services/razorpay_service.dart';
@@ -239,20 +240,21 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
 
       // 2. Launch Razorpay payment options (Web vs Native)
       if (kIsWeb) {
-        js.context.callMethod('openRazorpayCheckout', [
-          _razorpayKey,
-          amountPaise,
-          orderId,
-          currentUser?.email ?? '',
-          // Success callback
-          (paymentId, orderId, signature) {
-            _handleWebPaymentSuccess(paymentId.toString(), orderId.toString(), signature.toString());
-          },
-          // Error callback
-          (error) {
-            _handleWebPaymentError(error.toString());
-          }
-        ]);
+        if (globalContext.has('openRazorpayCheckout'.toJS)) {
+          globalContext.callMethod(
+            'openRazorpayCheckout'.toJS,
+            _razorpayKey.toJS,
+            amountPaise.toJS,
+            orderId.toJS,
+            (currentUser?.email ?? '').toJS,
+            ((JSString paymentId, JSString orderId, JSString signature) {
+              _handleWebPaymentSuccess(paymentId.toDart, orderId.toDart, signature.toDart);
+            }).toJS,
+            ((JSString error) {
+              _handleWebPaymentError(error.toDart);
+            }).toJS,
+          );
+        }
         return;
       }
 
@@ -310,14 +312,10 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
 
     try {
       final uri = Uri.parse(url);
-      if (kIsWeb) {
-        js.context.callMethod('open', [url, '_blank']);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-        } else {
-          throw Exception("Could not launch PayPal browser checkout.");
-        }
+        throw Exception("Could not launch PayPal browser checkout.");
       }
       
       if (mounted) {
